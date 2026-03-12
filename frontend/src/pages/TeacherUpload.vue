@@ -257,9 +257,9 @@ const handleSubmit = async () => {
 
     const exercise = await createExercise(content)
 
-    toast.success('Exercise Published!', {
-      description: `Exercise created with ID: ${exercise.sub}`,
-    })
+    // toast.success('Exercise Published!', {
+    //   description: `Exercise created with ID: ${exercise.sub}`,
+    // })
 
     localStorage.setItem('lastCreatedExerciseId', exercise.sub)
 
