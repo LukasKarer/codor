@@ -1,30 +1,27 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Code, ArrowLeft, User, Clock, MessageSquare, Award, Loader2 } from 'lucide-vue-next'
+import {
+  Code, ArrowLeft, User, Clock, MessageSquare, Award, Loader2, FlaskConical,
+} from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import {
   getExerciseInfo,
   getAllParticipantsWithDetails,
-  getUserInfo,
   parseExerciseContent,
   type Participant,
-  type UserInfo,
 } from '@/lib/api'
 
 interface StudentSubmission {
   studentId: string
   studentName: string
-  academicId: number
-  status: 'completed' | 'in-progress' | 'not-started'
+  status: 'completed' | 'not-started'
   score: number | null
-  timeSpent: string
-  aiInteractions: number
-  commonIssues: string[]
-  deductions?: Array<{ reason: string; points: number }>
   hasContent: boolean
+  isTest: boolean
+  testLabel: string | null
 }
 
 interface Exercise {
@@ -82,27 +79,20 @@ const loadExercises = async () => {
         const parsedContent = parseExerciseContent(exerciseInfo.content)
         const participants = await getAllParticipantsWithDetails(exerciseId)
 
-        const submissions: StudentSubmission[] = await Promise.all(
-          participants.map(async (participant: Participant) => {
-            let userInfo: UserInfo | null = null
-            try {
-              userInfo = await getUserInfo(participant.sub)
-            } catch (e) {
-              console.error(`Failed to load user info for ${participant.sub}`, e)
-            }
-            return {
-              studentId: participant.sub,
-              studentName: `Student ${participant.academic_id}`,
-              academicId: participant.academic_id,
-              status: participant.content ? 'completed' : 'not-started',
-              score: userInfo?.note ?? null,
-              timeSpent: 'N/A',
-              aiInteractions: 0,
-              commonIssues: [],
-              hasContent: !!participant.content,
-            } as StudentSubmission
-          }),
-        )
+        const submissions: StudentSubmission[] = participants.map((p: Participant) => {
+          const label = p.is_test
+            ? (p.test_label ?? 'Teacher test')
+            : `Student ${p.sub.slice(0, 6)}`
+          return {
+            studentId: p.sub,
+            studentName: label,
+            status: p.content ? 'completed' : 'not-started',
+            score: p.note ?? null,
+            hasContent: !!p.content,
+            isTest: p.is_test,
+            testLabel: p.test_label ?? null,
+          }
+        })
 
         loaded.push({ id: exerciseId, title: parsedContent.title, submissions })
       } catch (e) {
@@ -220,7 +210,10 @@ onMounted(() => {
               <CardTitle class="text-base">{{ exercise.title }}</CardTitle>
               <CardDescription class="flex items-center gap-2 text-xs">
                 <User class="h-3 w-3" />
-                {{ exercise.submissions.length }} students
+                {{ exercise.submissions.filter(s => !s.isTest).length }} students
+                <span v-if="exercise.submissions.some(s => s.isTest)" class="text-orange-500">
+                  + {{ exercise.submissions.filter(s => s.isTest).length }} test
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent class="pt-0">
@@ -246,7 +239,10 @@ onMounted(() => {
             v-for="submission in selectedExerciseData.submissions"
             :key="submission.studentId"
             :class="[
-              'cursor-pointer transition-all hover:scale-[1.02] backdrop-blur-md bg-white/40 dark:bg-slate-900/40',
+              'cursor-pointer transition-all hover:scale-[1.02] backdrop-blur-md',
+              submission.isTest
+                ? 'bg-orange-50/40 dark:bg-orange-950/20'
+                : 'bg-white/40 dark:bg-slate-900/40',
               selectedStudent === submission.studentId
                 ? 'border-primary shadow-lg shadow-primary/20'
                 : 'hover:border-primary/50',
@@ -254,26 +250,33 @@ onMounted(() => {
             @click="selectedStudent = submission.studentId"
           >
             <CardHeader class="pb-3">
-              <div class="flex items-center justify-between">
-                <CardTitle class="text-base">{{ submission.studentName }}</CardTitle>
-                <span
-                  :class="[
-                    'rounded-full border px-2 py-0.5 text-xs font-medium',
-                    getStatusColor(submission.status),
-                  ]"
-                >
-                  {{ submission.status.replace('-', ' ') }}
-                </span>
+              <div class="flex items-center justify-between gap-2">
+                <CardTitle class="text-base truncate flex items-center gap-1.5">
+                  <FlaskConical v-if="submission.isTest" class="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
+                  {{ submission.studentName }}
+                </CardTitle>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <span
+                    v-if="submission.isTest"
+                    class="rounded-full border border-orange-400/60 bg-orange-500/20 px-2 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-400"
+                  >
+                    TEST
+                  </span>
+                  <span
+                    :class="[
+                      'rounded-full border px-2 py-0.5 text-xs font-medium',
+                      getStatusColor(submission.status),
+                    ]"
+                  >
+                    {{ submission.status.replace('-', ' ') }}
+                  </span>
+                </div>
               </div>
             </CardHeader>
             <CardContent class="pt-0 space-y-2">
               <div class="flex items-center gap-2 text-xs text-muted-foreground">
                 <Clock class="h-3 w-3" />
-                {{ submission.timeSpent }}
-              </div>
-              <div class="flex items-center gap-2 text-xs text-muted-foreground">
-                <MessageSquare class="h-3 w-3" />
-                {{ submission.aiInteractions }} AI chats
+                N/A
               </div>
               <div v-if="submission.score !== null" class="flex items-center gap-2 text-xs">
                 <Award class="h-3 w-3 text-primary" />
@@ -288,31 +291,34 @@ onMounted(() => {
         <!-- Right: Student Details -->
         <div class="flex-1 overflow-auto p-6">
           <div v-if="selectedStudentData" class="mx-auto max-w-3xl space-y-6">
-            <div>
-              <h2 class="text-2xl font-bold text-foreground">
-                {{ selectedStudentData.studentName }}
-              </h2>
-              <p class="text-muted-foreground">{{ selectedExerciseData?.title }}</p>
+            <div class="flex items-start gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-2xl font-bold text-foreground">
+                    {{ selectedStudentData.studentName }}
+                  </h2>
+                  <span
+                    v-if="selectedStudentData.isTest"
+                    class="rounded-full border border-orange-400/60 bg-orange-500/20 px-2 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-400"
+                  >
+                    TEST SESSION
+                  </span>
+                </div>
+                <p class="text-muted-foreground">{{ selectedExerciseData?.title }}</p>
+              </div>
             </div>
 
             <!-- Stats Grid -->
-            <div class="grid gap-4 md:grid-cols-3">
-              <Card class="backdrop-blur-md bg-white/40 dark:bg-slate-900/40">
-                <CardHeader class="pb-3">
-                  <CardDescription class="flex items-center gap-2 text-xs">
-                    <Clock class="h-4 w-4" />
-                    Time Spent
-                  </CardDescription>
-                  <CardTitle class="text-2xl">{{ selectedStudentData.timeSpent }}</CardTitle>
-                </CardHeader>
-              </Card>
+            <div class="grid gap-4 md:grid-cols-2">
               <Card class="backdrop-blur-md bg-white/40 dark:bg-slate-900/40">
                 <CardHeader class="pb-3">
                   <CardDescription class="flex items-center gap-2 text-xs">
                     <MessageSquare class="h-4 w-4" />
-                    AI Interactions
+                    Submission Status
                   </CardDescription>
-                  <CardTitle class="text-2xl">{{ selectedStudentData.aiInteractions }}</CardTitle>
+                  <CardTitle class="text-xl">
+                    {{ selectedStudentData.hasContent ? 'Has submission' : 'No submission yet' }}
+                  </CardTitle>
                 </CardHeader>
               </Card>
               <Card class="backdrop-blur-md bg-white/40 dark:bg-slate-900/40">
@@ -329,87 +335,6 @@ onMounted(() => {
                 </CardHeader>
               </Card>
             </div>
-
-            <!-- AI Interactions -->
-            <Card
-              v-if="selectedStudentData.commonIssues.length > 0"
-              class="backdrop-blur-md bg-white/40 dark:bg-slate-900/40"
-            >
-              <CardHeader>
-                <CardTitle class="flex items-center gap-2">
-                  <MessageSquare class="h-5 w-5 text-primary" />
-                  AI Tutor Interactions
-                </CardTitle>
-                <CardDescription>Questions and topics discussed with the AI tutor</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul class="space-y-3">
-                  <li
-                    v-for="(issue, index) in selectedStudentData.commonIssues"
-                    :key="index"
-                    class="flex gap-3 p-3 rounded-lg bg-muted/30 backdrop-blur-sm"
-                  >
-                    <div
-                      class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary flex-shrink-0"
-                    >
-                      {{ index + 1 }}
-                    </div>
-                    <span class="text-sm text-foreground">{{ issue }}</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <!-- Score Deductions -->
-            <Card
-              v-if="selectedStudentData.deductions && selectedStudentData.deductions.length > 0"
-              class="backdrop-blur-md bg-white/40 dark:bg-slate-900/40"
-            >
-              <CardHeader>
-                <CardTitle class="flex items-center gap-2">
-                  <Award class="h-5 w-5 text-red-500" />
-                  Score Deductions
-                </CardTitle>
-                <CardDescription
-                  >Reasons why points were deducted from the final score</CardDescription
-                >
-              </CardHeader>
-              <CardContent>
-                <div class="space-y-3">
-                  <div
-                    v-for="(deduction, index) in selectedStudentData.deductions"
-                    :key="index"
-                    class="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20 backdrop-blur-sm"
-                  >
-                    <div class="flex items-center gap-3">
-                      <div
-                        class="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-xs font-semibold text-red-600 dark:text-red-400 flex-shrink-0"
-                      >
-                        {{ index + 1 }}
-                      </div>
-                      <span class="text-sm text-foreground">{{ deduction.reason }}</span>
-                    </div>
-                    <div
-                      class="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold text-sm"
-                    >
-                      <span>-{{ deduction.points }}</span>
-                      <span class="text-xs">pts</span>
-                    </div>
-                  </div>
-                  <div
-                    class="flex items-center justify-between p-3 rounded-lg bg-muted/50 backdrop-blur-sm border border-border mt-4"
-                  >
-                    <span class="text-sm font-semibold text-foreground">Total Points Lost</span>
-                    <span class="text-lg font-bold text-red-600 dark:text-red-400">
-                      -{{
-                        selectedStudentData.deductions.reduce((sum, d) => sum + d.points, 0)
-                      }}
-                      pts
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           <div v-else class="flex h-full items-center justify-center">

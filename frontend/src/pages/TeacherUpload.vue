@@ -263,6 +263,17 @@ const handleSubmit = async () => {
 
     localStorage.setItem('lastCreatedExerciseId', exercise.sub)
 
+    // Keep a cumulative list so StudentProgress can show all exercises
+    try {
+      const existing: string[] = JSON.parse(localStorage.getItem('exerciseIds') ?? '[]')
+      if (!existing.includes(exercise.sub)) {
+        existing.unshift(exercise.sub)
+        localStorage.setItem('exerciseIds', JSON.stringify(existing))
+      }
+    } catch {
+      localStorage.setItem('exerciseIds', JSON.stringify([exercise.sub]))
+    }
+
     setTimeout(() => router.push('/teacher'), 1500)
   } catch (e) {
     console.error('Failed to publish exercise:', e)

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { User, Session } from '@supabase/supabase-js'
 import type { Message, Step, CodeHighlight } from '@/lib/ai'
 
 export type { Message, Step, CodeHighlight }
@@ -52,12 +53,20 @@ const initialMessages: Message[] = [
     id: 1,
     role: 'assistant',
     content:
-      "Welcome! 👋 I'm your coding tutor. Read the exercise description above and start coding. If you need help, just click the 'Get Help' button and I'll guide you!",
+      "Welcome! I'm your coding tutor. Read the exercise description above and start coding. If you need help, just click the 'Get Help' button and I'll guide you!",
     timestamp: new Date(),
   },
 ]
 
 export const useAppStore = defineStore('app', () => {
+  // Auth state
+  const user = ref<User | null>(null)
+  const session = ref<Session | null>(null)
+  // Role flags loaded from the DB profiles table after login
+  const isTeacher = ref(false)
+  const isAdmin = ref(false)
+
+  // Exercise/student state
   const code = ref(initialCode)
   const messages = ref<Message[]>(initialMessages)
   const steps = ref<Step[]>(initialSteps)
@@ -66,9 +75,17 @@ export const useAppStore = defineStore('app', () => {
   const isStreaming = ref(false)
   const exerciseId = ref<string | null>(null)
   const userId = ref<string | null>(null)
-  const academicId = ref<number | null>(null)
+
+  // Config
+  const pushIntervalMs = ref(30000)
 
   return {
+    // auth
+    user,
+    session,
+    isTeacher,
+    isAdmin,
+    // exercise
     code,
     messages,
     steps,
@@ -77,6 +94,7 @@ export const useAppStore = defineStore('app', () => {
     isStreaming,
     exerciseId,
     userId,
-    academicId,
+    // config
+    pushIntervalMs,
   }
 })

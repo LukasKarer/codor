@@ -1,23 +1,39 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { strRandom } from '../lib/utils';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
 /**
  * POST /v1/users/new
- * Creates a new user linked to an exercise.
+ * Enrolls the authenticated user into an exercise (or returns their existing
+ * enrollment so they can resume from where they left off).
+ *
+ * Behaviour:
+ *  - Non-test: idempotent — if a row already exists for (auth_user_id, exercise_id,
+ *    is_test=false) it is returned as-is, including any previously saved content
+ *    so the frontend can restore the editor state.
+ *  - Test (is_test=true): always creates a new row, preserving every teacher test run.
+ *
+ * Body:
+ *   exercise_sub  string   – exercise opaque sub token (also accepted as exercise_id)
+ *   is_test       boolean  – optional, default false
+ *
+ * Response:
+ *   { sub, exercise_sub, creation_time, is_test, saved_content }
  */
-router.post('/users/new', async (req: Request, res: Response) => {
-  const academic_id: number | undefined = req.body?.academic_id;
+router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
+  const authUser = req.authUser!;
   const exercise_sub: string | undefined = req.body?.exercise_sub ?? req.body?.exercise_id;
+  const is_test: boolean = req.body?.is_test === true || req.body?.is_test === 'true';
 
-  if (!academic_id || !exercise_sub) {
-    res.status(400).json({ error: 'academic_id and exercise_sub are required' });
+  if (!exercise_sub) {
+    res.status(400).json({ error: 'exercise_sub is required' });
     return;
   }
 
-  // Verify exercise exists
+  // Resolve exercise
   const { data: exercise, error: exError } = await supabase
     .from('exercises')
     .select('id')
@@ -34,25 +50,50 @@ router.post('/users/new', async (req: Request, res: Response) => {
     return;
   }
 
-  // Generate a unique user sub
+  // Ensure a profile row exists for this auth user (idempotent, never overwrites flags)
+  await supabase
+    .from('profiles')
+    .upsert({ auth_user_id: authUser.id }, { onConflict: 'auth_user_id', ignoreDuplicates: true });
+
+  // For real students: return the existing enrollment so they resume their saved work.
+  // For test sessions: always create a fresh row so every test run is preserved.
+  if (!is_test) {
+    const { data: existing } = await supabase
+      .from('entries')
+      .select('sub, creation_time, content')
+      .eq('auth_user_id', authUser.id)
+      .eq('exercise_id', exercise.id)
+      .eq('is_test', false)
+      .maybeSingle();
+
+    if (existing) {
+      res.json({
+        sub: existing.sub,
+        exercise_sub,
+        creation_time: existing.creation_time,
+        is_test: false,
+        saved_content: existing.content ?? null,
+      });
+      return;
+    }
+  }
+
+  // Generate a unique sub token for this enrollment row
   let sub: string;
   do {
     sub = strRandom(32);
-    const { data } = await supabase
-      .from('users')
-      .select('id')
-      .eq('sub', sub)
-      .maybeSingle();
+    const { data } = await supabase.from('entries').select('id').eq('sub', sub).maybeSingle();
     if (!data) break;
   } while (true);
 
   const creation_time = Math.floor(Date.now() / 1000);
 
-  const { error } = await supabase.from('users').insert({
+  const { error } = await supabase.from('entries').insert({
     sub,
     exercise_id: exercise.id,
     creation_time,
-    academic_id: Number(academic_id),
+    auth_user_id: authUser.id,
+    is_test,
   });
 
   if (error) {
@@ -60,58 +101,21 @@ router.post('/users/new', async (req: Request, res: Response) => {
     return;
   }
 
-  res.json({ sub, exercise_sub, academic_id: Number(academic_id), creation_time });
-});
-
-/**
- * POST /v1/user/:user_sub/push
- * Stores or updates the user's submitted content.
- */
-router.post('/user/:user_sub/push', async (req: Request<{ user_sub: string }>, res: Response) => {
-  const user_sub = req.params.user_sub as string;
-  const content: string = req.body?.content ?? '';
-
-  // Verify user exists
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('sub', user_sub)
-    .maybeSingle();
-
-  if (userError) {
-    res.status(500).json({ error: userError.message });
-    return;
-  }
-
-  if (!user) {
-    res.status(404).json({ error: 'User not found' });
-    return;
-  }
-
-  const { error } = await supabase
-    .from('users')
-    .update({ content })
-    .eq('sub', user_sub);
-
-  if (error) {
-    res.status(500).json({ error: error.message });
-    return;
-  }
-
-  res.json({ message: `Content of user ${user_sub} updated` });
+  // Brand-new enrollment — no saved content yet
+  res.json({ sub, exercise_sub, creation_time, is_test, saved_content: null });
 });
 
 /**
  * DELETE /v1/user/:user_sub/delete
- * Deletes a user.
+ * Deletes an enrollment row. The caller must be the owner (auth_user_id match).
  */
-router.delete('/user/:user_sub/delete', async (req: Request<{ user_sub: string }>, res: Response) => {
-  const user_sub = req.params.user_sub as string;
+router.delete('/user/:user_sub/delete', requireAuth, async (req: Request<{ user_sub: string }>, res: Response) => {
+  const user_sub = req.params.user_sub;
+  const authUser = req.authUser!;
 
-  // Check existence first to replicate PHP 404 behaviour
   const { data: existing, error: findError } = await supabase
-    .from('users')
-    .select('id')
+    .from('entries')
+    .select('id, auth_user_id')
     .eq('sub', user_sub)
     .maybeSingle();
 
@@ -121,30 +125,36 @@ router.delete('/user/:user_sub/delete', async (req: Request<{ user_sub: string }
   }
 
   if (!existing) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: 'Enrollment not found' });
     return;
   }
 
-  const { error } = await supabase.from('users').delete().eq('sub', user_sub);
+  if (existing.auth_user_id !== authUser.id) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  const { error } = await supabase.from('entries').delete().eq('sub', user_sub);
 
   if (error) {
     res.status(500).json({ error: error.message });
     return;
   }
 
-  res.json({ message: `User ${user_sub} deleted` });
+  res.json({ message: `Enrollment ${user_sub} deleted` });
 });
 
 /**
  * GET /v1/user/:user_sub/info
- * Returns user information.
+ * Returns enrollment information. Caller must be the owner.
  */
-router.get('/user/:user_sub/info', async (req: Request<{ user_sub: string }>, res: Response) => {
-  const user_sub = req.params.user_sub as string;
+router.get('/user/:user_sub/info', requireAuth, async (req: Request<{ user_sub: string }>, res: Response) => {
+  const user_sub = req.params.user_sub;
+  const authUser = req.authUser!;
 
   const { data: user, error } = await supabase
-    .from('users')
-    .select('sub, exercise_id, creation_time, academic_id, note')
+    .from('entries')
+    .select('sub, exercise_id, creation_time, note, auth_user_id, is_test, content')
     .eq('sub', user_sub)
     .maybeSingle();
 
@@ -154,7 +164,12 @@ router.get('/user/:user_sub/info', async (req: Request<{ user_sub: string }>, re
   }
 
   if (!user) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: 'Enrollment not found' });
+    return;
+  }
+
+  if (user.auth_user_id !== authUser.id) {
+    res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
@@ -163,15 +178,20 @@ router.get('/user/:user_sub/info', async (req: Request<{ user_sub: string }>, re
 
 /**
  * POST /v1/user/:user_sub/note
- * Assigns a grade/note to a user.
+ * Assigns a grade to an enrollment row. Requires teacher role.
  */
-router.post('/user/:user_sub/note', async (req: Request<{ user_sub: string }>, res: Response) => {
-  const user_sub = req.params.user_sub as string;
+router.post('/user/:user_sub/note', requireAuth, async (req: Request<{ user_sub: string }>, res: Response) => {
+  const user_sub = req.params.user_sub;
+  const authUser = req.authUser!;
   const note = req.body?.note ?? null;
 
-  // Verify user exists
+  if (!authUser.isTeacher) {
+    res.status(403).json({ error: 'Forbidden: teacher access required' });
+    return;
+  }
+
   const { data: existing, error: findError } = await supabase
-    .from('users')
+    .from('entries')
     .select('id')
     .eq('sub', user_sub)
     .maybeSingle();
@@ -182,12 +202,12 @@ router.post('/user/:user_sub/note', async (req: Request<{ user_sub: string }>, r
   }
 
   if (!existing) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: 'Enrollment not found' });
     return;
   }
 
   const { error } = await supabase
-    .from('users')
+    .from('entries')
     .update({ note: note !== null ? Number(note) : null })
     .eq('sub', user_sub);
 
@@ -196,7 +216,8 @@ router.post('/user/:user_sub/note', async (req: Request<{ user_sub: string }>, r
     return;
   }
 
-  res.json({ message: `User ${user_sub} noted` });
+  res.json({ message: `Enrollment ${user_sub} noted` });
 });
 
 export default router;
+

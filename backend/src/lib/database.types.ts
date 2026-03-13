@@ -3,6 +3,24 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 export interface Database {
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          auth_user_id: string;
+          is_teacher: boolean;
+          is_admin: boolean;
+        };
+        Insert: {
+          auth_user_id: string;
+          is_teacher?: boolean;
+          is_admin?: boolean;
+        };
+        Update: {
+          auth_user_id?: string;
+          is_teacher?: boolean;
+          is_admin?: boolean;
+        };
+        Relationships: [];
+      };
       exercises: {
         Row: {
           id: number;
@@ -24,37 +42,40 @@ export interface Database {
         };
         Relationships: [];
       };
-      users: {
+      entries: {
         Row: {
-          id: number;
+          id: string;
           sub: string;
           exercise_id: number;
           creation_time: number;
-          academic_id: number;
           note: number | null;
           content: string | null;
+          auth_user_id: string | null;
+          is_test: boolean;
         };
         Insert: {
-          id?: number;
+          id?: string;
           sub: string;
           exercise_id: number;
           creation_time: number;
-          academic_id: number;
           note?: number | null;
           content?: string | null;
+          auth_user_id?: string | null;
+          is_test?: boolean;
         };
         Update: {
-          id?: number;
+          id?: string;
           sub?: string;
           exercise_id?: number;
           creation_time?: number;
-          academic_id?: number;
           note?: number | null;
           content?: string | null;
+          auth_user_id?: string | null;
+          is_test?: boolean;
         };
         Relationships: [
           {
-            foreignKeyName: 'users_exercise_id_fkey';
+            foreignKeyName: 'entries_exercise_id_fkey';
             columns: ['exercise_id'];
             referencedRelation: 'exercises';
             referencedColumns: ['id'];
