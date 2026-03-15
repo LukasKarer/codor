@@ -3,23 +3,51 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 export interface Database {
   public: {
     Tables: {
+      organisations: {
+        Row: {
+          id: string;
+          admins: string[];   // array of auth.users UUIDs
+          data: Record<string, Json>;
+        };
+        Insert: {
+          id?: string;
+          admins?: string[];
+          data?: Record<string, Json>;
+        };
+        Update: {
+          id?: string;
+          admins?: string[];
+          data?: Record<string, Json>;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           auth_user_id: string;
           is_teacher: boolean;
           is_admin: boolean;
+          organisation_id: string | null;
         };
         Insert: {
           auth_user_id: string;
           is_teacher?: boolean;
           is_admin?: boolean;
+          organisation_id?: string | null;
         };
         Update: {
           auth_user_id?: string;
           is_teacher?: boolean;
           is_admin?: boolean;
+          organisation_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_organisation_id_fkey';
+            columns: ['organisation_id'];
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          }
+        ];
       };
       exercises: {
         Row: {

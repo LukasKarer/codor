@@ -20,6 +20,7 @@ onMounted(async () => {
       const profile = await getProfile()
       store.isTeacher = profile.is_teacher
       store.isAdmin = profile.is_admin
+      store.organisationId = profile.organisation_id
       router.replace(profile.is_teacher ? '/teacher' : '/')
     } catch {
       router.replace('/')

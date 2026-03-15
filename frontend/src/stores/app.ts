@@ -65,6 +65,8 @@ export const useAppStore = defineStore('app', () => {
   // Role flags loaded from the DB profiles table after login
   const isTeacher = ref(false)
   const isAdmin = ref(false)
+  // Organisation the user belongs to (null = no org assigned)
+  const organisationId = ref<string | null>(null)
 
   // Exercise/student state
   const code = ref(initialCode)
@@ -85,6 +87,7 @@ export const useAppStore = defineStore('app', () => {
     session,
     isTeacher,
     isAdmin,
+    organisationId,
     // exercise
     code,
     messages,

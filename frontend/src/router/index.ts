@@ -41,6 +41,12 @@ const router = createRouter({
       meta: { requiresTeacher: true },
     },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/pages/AdminPage.vue'),
+      meta: { requiresAdmin: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/pages/NotFound.vue'),
@@ -70,6 +76,17 @@ router.beforeEach(async (to) => {
       isTeacher = false
     }
     if (!isTeacher) return { name: 'index' }
+  }
+
+  if (to.meta.requiresAdmin) {
+    let isAdmin = false
+    try {
+      const profile = await getProfile()
+      isAdmin = profile.is_admin
+    } catch {
+      isAdmin = false
+    }
+    if (!isAdmin) return { name: 'index' }
   }
 
   return true

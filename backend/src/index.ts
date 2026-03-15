@@ -5,6 +5,7 @@ import exercisesRouter from './routes/exercises';
 import usersRouter from './routes/users';
 import profilesRouter from './routes/profiles';
 import aiRouter from './routes/ai';
+import organisationsRouter from './routes/organisations';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -37,6 +38,7 @@ app.use('/v1', exercisesRouter);
 app.use('/v1', usersRouter);
 app.use('/v1', profilesRouter);
 app.use('/v1', aiRouter);
+app.use('/v1', organisationsRouter);
 
 // 404 fallback
 app.use((_req, res) => {

@@ -47,6 +47,15 @@ export interface UserProfile {
   auth_user_id: string
   is_teacher: boolean
   is_admin: boolean
+  organisation_id: string | null
+}
+
+export interface Organisation {
+  id: string
+  /** Array of auth.users UUIDs that have admin access to this org */
+  admins: string[]
+  /** Arbitrary JSON data stored for the organisation */
+  data: Record<string, unknown>
 }
 
 // ============================================
@@ -241,4 +250,53 @@ export async function getAllParticipantsWithDetails(exerciseId: string): Promise
     participantIds.map((userId) => getExerciseParticipant(exerciseId, userId)),
   )
   return participants
+}
+
+// ============================================
+// ADMIN — ORGANISATIONS
+// ============================================
+
+export async function getOrganisations(): Promise<Organisation[]> {
+  return apiCall<Organisation[]>('/v1/admin/organisations')
+}
+
+export async function createOrganisation(
+  admins: string[],
+  data: Record<string, unknown>,
+): Promise<Organisation> {
+  return apiCall<Organisation>('/v1/admin/organisations/new', 'POST', { admins, data })
+}
+
+export async function getOrganisation(orgId: string): Promise<Organisation> {
+  return apiCall<Organisation>(`/v1/admin/organisation/${orgId}`)
+}
+
+export async function updateOrganisation(
+  orgId: string,
+  payload: { admins?: string[]; data?: Record<string, unknown> },
+): Promise<Organisation> {
+  return apiCall<Organisation>(`/v1/admin/organisation/${orgId}/update`, 'POST', payload)
+}
+
+export async function deleteOrganisation(orgId: string): Promise<void> {
+  await apiCall(`/v1/admin/organisation/${orgId}/delete`, 'DELETE')
+}
+
+export async function getOrganisationMembers(orgId: string): Promise<UserProfile[]> {
+  return apiCall<UserProfile[]>(`/v1/admin/organisation/${orgId}/members`)
+}
+
+// ============================================
+// ADMIN — PROFILES
+// ============================================
+
+export async function getProfiles(): Promise<UserProfile[]> {
+  return apiCall<UserProfile[]>('/v1/admin/profiles')
+}
+
+export async function updateProfile(
+  authUserId: string,
+  payload: { is_teacher?: boolean; is_admin?: boolean; organisation_id?: string | null },
+): Promise<UserProfile> {
+  return apiCall<UserProfile>(`/v1/admin/profile/${authUserId}/update`, 'POST', payload)
 }

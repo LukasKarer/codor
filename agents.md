@@ -94,14 +94,14 @@ Routes are defined in `src/router/index.ts`:
 |---|---|
 | `VITE_GEMINI_API_KEY` | Google Gemini API key used by `src/lib/ai.ts` |
 
-Create a `.env` file in `frontend-vue/` with the same key as the React app's `.env`.
+Create a `.env` file in `frontend/` with the same key as the React app's `.env`.
 
 ---
 
 ## File Structure Overview
 
 ```
-frontend-vue/src/
+frontend/src/
 ├── App.vue                  # Root — <RouterView> + <Toaster>
 ├── main.ts                  # Vite entry; registers Vue, Pinia, Router
 ├── style.css                # Tailwind v4 CSS-first theme + custom utilities
