@@ -67,10 +67,18 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresTeacher) {
-    // Fetch role from DB (source of truth)
+    // Fetch role from DB (source of truth) and hydrate store so pages see
+    // correct flags even after a hard refresh (Pinia state is not persisted)
     let isTeacher = false
     try {
+      const { useAppStore } = await import('@/stores/app')
+      const store = useAppStore()
       const profile = await getProfile()
+      store.isTeacher = profile.is_teacher
+      store.isAdmin = profile.is_admin
+      store.isSystemAdmin = profile.is_system_admin
+      store.userName = profile.name
+      store.organisationId = profile.organisation_id
       isTeacher = profile.is_teacher
     } catch {
       isTeacher = false
@@ -79,14 +87,24 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAdmin) {
-    let isAdmin = false
+    // Fetch role from DB (source of truth) and hydrate store so AdminPage sees
+    // correct flags even after a hard refresh (Pinia state is not persisted)
+    let canAccess = false
     try {
+      const { useAppStore } = await import('@/stores/app')
+      const store = useAppStore()
       const profile = await getProfile()
-      isAdmin = profile.is_admin
+      store.isTeacher = profile.is_teacher
+      store.isAdmin = profile.is_admin
+      store.isSystemAdmin = profile.is_system_admin
+      store.userName = profile.name
+      store.organisationId = profile.organisation_id
+      // Both system admins and org-level admins can access the admin panel
+      canAccess = profile.is_system_admin || profile.is_admin
     } catch {
-      isAdmin = false
+      canAccess = false
     }
-    if (!isAdmin) return { name: 'index' }
+    if (!canAccess) return { name: 'index' }
   }
 
   return true

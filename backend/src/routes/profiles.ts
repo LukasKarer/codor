@@ -14,7 +14,7 @@ router.get('/profile/me', requireAuth, async (req: Request, res: Response) => {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('is_teacher, is_admin')
+    .select('is_teacher, is_admin, is_system_admin, name, organisation_id')
     .eq('auth_user_id', authUser.id)
     .maybeSingle();
 
@@ -25,8 +25,11 @@ router.get('/profile/me', requireAuth, async (req: Request, res: Response) => {
 
   res.json({
     auth_user_id: authUser.id,
+    name: profile?.name ?? '',
     is_teacher: profile?.is_teacher ?? false,
     is_admin: profile?.is_admin ?? false,
+    is_system_admin: profile?.is_system_admin ?? false,
+    organisation_id: profile?.organisation_id ?? null,
   });
 });
 

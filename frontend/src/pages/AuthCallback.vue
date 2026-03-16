@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { Loader2 } from 'lucide-vue-next'
 import { supabase } from '@/lib/supabase'
 import { useAppStore } from '@/stores/app'
-import { getProfile } from '@/lib/api'
+import { getProfile, setupProfile, invalidateProfileCache } from '@/lib/api'
 
 const router = useRouter()
 const store = useAppStore()
@@ -15,12 +15,38 @@ onMounted(async () => {
   if (data.session) {
     store.user = data.session.user
     store.session = data.session
+
+    // If name + org were stored at signup time (email/password with confirmation
+    // enabled), complete the profile on the backend now that we have a session.
+    const pendingName = localStorage.getItem('pendingProfileName')
+    const pendingOrgId = localStorage.getItem('pendingProfileOrgId')
+    if (pendingName) {
+      try {
+        await setupProfile(pendingName, pendingOrgId || null)
+      } catch {
+        // Non-fatal — profile can be completed via setup mode if needed
+      }
+      localStorage.removeItem('pendingProfileName')
+      localStorage.removeItem('pendingProfileOrgId')
+    }
+
     // Determine destination from DB profile (source of truth for role flags)
     try {
+      invalidateProfileCache()
       const profile = await getProfile()
       store.isTeacher = profile.is_teacher
       store.isAdmin = profile.is_admin
+      store.isSystemAdmin = profile.is_system_admin
+      store.userName = profile.name
       store.organisationId = profile.organisation_id
+
+      // Profile setup was never completed (e.g. OAuth user with no pending data).
+      // Send them back to the login page in "setup" mode so they can finish.
+      if (!profile.name && !profile.organisation_id) {
+        router.replace('/login?setup=1')
+        return
+      }
+
       router.replace(profile.is_teacher ? '/teacher' : '/')
     } catch {
       router.replace('/')

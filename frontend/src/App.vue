@@ -4,7 +4,7 @@ import { RouterView } from 'vue-router'
 import { Toaster } from '@/components/ui/sonner'
 import { supabase } from '@/lib/supabase'
 import { useAppStore } from '@/stores/app'
-import { getProfile } from '@/lib/api'
+import { getProfile, invalidateProfileCache } from '@/lib/api'
 
 const store = useAppStore()
 
@@ -13,9 +13,13 @@ async function loadProfile() {
     const profile = await getProfile()
     store.isTeacher = profile.is_teacher
     store.isAdmin = profile.is_admin
+    store.isSystemAdmin = profile.is_system_admin
+    store.userName = profile.name
+    store.organisationId = profile.organisation_id
   } catch {
     store.isTeacher = false
     store.isAdmin = false
+    store.isSystemAdmin = false
   }
 }
 
@@ -36,8 +40,10 @@ onMounted(() => {
     if (session) {
       loadProfile()
     } else {
+      invalidateProfileCache()
       store.isTeacher = false
       store.isAdmin = false
+      store.isSystemAdmin = false
     }
   })
 })

@@ -1,33 +1,97 @@
 -- ============================================================
 -- organisations table
--- One row per organisation. Holds org-level data and a list of
--- admin user IDs (auth.users UUIDs) who can manage it.
--- Idempotent: CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS
+-- name           : display name of the organisation
+-- admins         : JSONB array of auth.users UUIDs that are
+--                  org-level admins (can edit this org's data)
+-- email_patterns : JSONB array of strings/patterns; during
+--                  signup at least one must match the user's
+--                  email address for the org to be selectable.
+--                  Each entry is a plain substring match
+--                  (e.g. "@acme.com").
+-- data           : arbitrary JSONB payload for the org
 -- ============================================================
 CREATE TABLE IF NOT EXISTS organisations (
-  id     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  admins jsonb NOT NULL DEFAULT '[]'::jsonb,
-  data   jsonb NOT NULL DEFAULT '{}'::jsonb
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name           TEXT NOT NULL DEFAULT '',
+  admins         jsonb NOT NULL DEFAULT '[]'::jsonb,
+  email_patterns jsonb NOT NULL DEFAULT '[]'::jsonb,
+  data           jsonb NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- Add columns that may be missing on an existing DB
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'organisations'
+      AND column_name  = 'name'
+  ) THEN
+    ALTER TABLE organisations ADD COLUMN name TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'organisations'
+      AND column_name  = 'email_patterns'
+  ) THEN
+    ALTER TABLE organisations
+      ADD COLUMN email_patterns jsonb NOT NULL DEFAULT '[]'::jsonb;
+  END IF;
+END;
+$$;
 
 -- ============================================================
 -- profiles table
--- One row per Supabase auth user. Holds role flags.
--- Auto-created (idempotent upsert) on first POST /v1/users/new.
--- Flags default to false; flip manually in DB to grant roles.
--- organisation_id: FK to which org the user belongs (nullable).
+-- is_teacher      : can create/manage exercises
+-- is_admin        : org-level admin — can edit their own org
+-- is_system_admin : super-admin — can edit everything
+-- name            : display name entered at signup
+-- organisation_id : FK to which org the user belongs
 -- ============================================================
 CREATE TABLE IF NOT EXISTS profiles (
-  auth_user_id      uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  auth_user_id      uuid    PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name              TEXT    NOT NULL DEFAULT '',
   is_teacher        boolean NOT NULL DEFAULT false,
   is_admin          boolean NOT NULL DEFAULT false,
-  organisation_id   uuid REFERENCES organisations(id) ON DELETE SET NULL
+  is_system_admin   boolean NOT NULL DEFAULT false,
+  organisation_id   uuid    REFERENCES organisations(id) ON DELETE SET NULL
 );
 
--- Add organisation_id column to profiles if it does not exist yet
--- (safe to run on an existing DB that was created before this migration)
+-- Add columns that may be missing on an existing DB
 DO $$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'profiles'
+      AND column_name  = 'name'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN name TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'profiles'
+      AND column_name  = 'is_system_admin'
+  ) THEN
+    ALTER TABLE profiles
+      ADD COLUMN is_system_admin boolean NOT NULL DEFAULT false;
+  END IF;
+
+  -- is_admin: org-level admin flag (was added later; may be missing on legacy DBs)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'profiles'
+      AND column_name  = 'is_admin'
+  ) THEN
+    ALTER TABLE profiles
+      ADD COLUMN is_admin boolean NOT NULL DEFAULT false;
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public'
@@ -42,7 +106,6 @@ $$;
 
 -- ============================================================
 -- exercises table
--- content column stores exercise description / starter code.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS exercises (
   id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -53,14 +116,6 @@ CREATE TABLE IF NOT EXISTS exercises (
 
 -- ============================================================
 -- entries table (enrollment log)
--- One row per (auth_user_id, exercise_id) for real students;
--- test sessions (teacher "Try as Student") always insert a new row.
--- id        : auto-generated UUID (primary key)
--- sub       : random opaque token used in public-facing URLs
--- auth_user_id : Supabase auth UUID (nullable for legacy rows)
--- is_test   : true for teacher test sessions
--- content   : last pushed code (saved editor state)
--- note      : teacher-assigned grade (nullable)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS entries (
   id            uuid    PRIMARY KEY DEFAULT gen_random_uuid(),

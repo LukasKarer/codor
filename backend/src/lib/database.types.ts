@@ -6,17 +6,25 @@ export interface Database {
       organisations: {
         Row: {
           id: string;
-          admins: string[];   // array of auth.users UUIDs
+          name: string;
+          /** Array of auth.users UUIDs with org-level admin access */
+          admins: string[];
+          /** Array of email substrings/patterns; at least one must match for signup */
+          email_patterns: string[];
           data: Record<string, Json>;
         };
         Insert: {
           id?: string;
+          name?: string;
           admins?: string[];
+          email_patterns?: string[];
           data?: Record<string, Json>;
         };
         Update: {
           id?: string;
+          name?: string;
           admins?: string[];
+          email_patterns?: string[];
           data?: Record<string, Json>;
         };
         Relationships: [];
@@ -24,20 +32,28 @@ export interface Database {
       profiles: {
         Row: {
           auth_user_id: string;
+          name: string;
           is_teacher: boolean;
+          /** Org-level admin: can edit their own organisation */
           is_admin: boolean;
+          /** System-level super-admin: can edit everything */
+          is_system_admin: boolean;
           organisation_id: string | null;
         };
         Insert: {
           auth_user_id: string;
+          name?: string;
           is_teacher?: boolean;
           is_admin?: boolean;
+          is_system_admin?: boolean;
           organisation_id?: string | null;
         };
         Update: {
           auth_user_id?: string;
+          name?: string;
           is_teacher?: boolean;
           is_admin?: boolean;
+          is_system_admin?: boolean;
           organisation_id?: string | null;
         };
         Relationships: [

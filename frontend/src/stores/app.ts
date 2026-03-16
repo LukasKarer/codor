@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Message, Step, CodeHighlight } from '@/lib/ai'
+import { invalidateProfileCache } from '@/lib/api'
 
 export type { Message, Step, CodeHighlight }
 
@@ -64,7 +65,12 @@ export const useAppStore = defineStore('app', () => {
   const session = ref<Session | null>(null)
   // Role flags loaded from the DB profiles table after login
   const isTeacher = ref(false)
+  /** Org-level admin */
   const isAdmin = ref(false)
+  /** System-level super-admin */
+  const isSystemAdmin = ref(false)
+  // Profile fields
+  const userName = ref('')
   // Organisation the user belongs to (null = no org assigned)
   const organisationId = ref<string | null>(null)
 
@@ -81,13 +87,28 @@ export const useAppStore = defineStore('app', () => {
   // Config
   const pushIntervalMs = ref(30000)
 
+  /** Clear all auth/profile state. Call after supabase.auth.signOut(). */
+  function logout() {
+    invalidateProfileCache()
+    user.value = null
+    session.value = null
+    isTeacher.value = false
+    isAdmin.value = false
+    isSystemAdmin.value = false
+    userName.value = ''
+    organisationId.value = null
+  }
+
   return {
     // auth
     user,
     session,
     isTeacher,
     isAdmin,
+    isSystemAdmin,
+    userName,
     organisationId,
+    logout,
     // exercise
     code,
     messages,

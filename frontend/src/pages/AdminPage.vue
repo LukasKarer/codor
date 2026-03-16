@@ -3,16 +3,16 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Building2,
-  Users,
   Plus,
   Trash2,
   Pencil,
   X,
   Check,
   ChevronRight,
-  ArrowLeft,
   Shield,
+  ShieldCheck,
   LogOut,
+  Copy,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +28,6 @@ import {
   createOrganisation,
   updateOrganisation,
   deleteOrganisation,
-  getOrganisationMembers,
   getProfiles,
   updateProfile,
 } from '@/lib/api'
@@ -40,61 +39,69 @@ type Tab = 'organisations' | 'profiles'
 const router = useRouter()
 const store = useAppStore()
 
+/** Whether the current user is a full system admin (not just org admin) */
+const isSystemAdmin = computed(() => store.isSystemAdmin)
+
+/** Label for the second tab */
+const secondTabLabel = computed(() => isSystemAdmin.value ? 'Profiles' : 'Members')
+
 const activeTab = ref<Tab>('organisations')
-const loading = ref(false)
+const loadingOrgs = ref(false)
+const loadingProfiles = ref(false)
 
 // Organisations
 const organisations = ref<Organisation[]>([])
 const selectedOrg = ref<Organisation | null>(null)
-const orgMembers = ref<UserProfile[]>([])
 
-// Profiles
+// Profiles / Members
 const profiles = ref<UserProfile[]>([])
 
 // ─── Modals ─────────────────────────────────────────────────
 const showOrgModal = ref(false)
 const orgModalMode = ref<'create' | 'edit'>('create')
-const orgForm = ref<{ admins: string; data: string }>({ admins: '', data: '{}' })
+const orgForm = ref({
+  name: '',
+  admins: '',
+  email_patterns: '',
+  data: '{}',
+})
 const orgFormError = ref('')
 
 const showProfileModal = ref(false)
 const profileEditTarget = ref<UserProfile | null>(null)
-const profileForm = ref<{
-  is_teacher: boolean
-  is_admin: boolean
-  organisation_id: string
-}>({ is_teacher: false, is_admin: false, organisation_id: '' })
+const profileForm = ref({
+  name: '',
+  is_teacher: false,
+  is_admin: false,
+  is_system_admin: false,
+  organisation_id: '',
+})
 
 // ─── Load data ───────────────────────────────────────────────
 async function loadOrganisations() {
-  loading.value = true
+  loadingOrgs.value = true
   try {
     organisations.value = await getOrganisations()
   } catch (e: unknown) {
     toast.error('Failed to load organisations: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
-    loading.value = false
+    loadingOrgs.value = false
   }
 }
 
 async function loadProfiles() {
-  loading.value = true
+  loadingProfiles.value = true
   try {
     profiles.value = await getProfiles()
   } catch (e: unknown) {
     toast.error('Failed to load profiles: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
-    loading.value = false
+    loadingProfiles.value = false
   }
 }
 
-async function selectOrg(org: Organisation) {
+function selectOrg(org: Organisation) {
   selectedOrg.value = org
-  try {
-    orgMembers.value = await getOrganisationMembers(org.id)
-  } catch {
-    orgMembers.value = []
-  }
 }
 
 onMounted(() => {
@@ -105,7 +112,7 @@ onMounted(() => {
 // ─── Org helpers ────────────────────────────────────────────
 function openCreateOrg() {
   orgModalMode.value = 'create'
-  orgForm.value = { admins: '', data: '{}' }
+  orgForm.value = { name: '', admins: '', email_patterns: '', data: '{}' }
   orgFormError.value = ''
   showOrgModal.value = true
 }
@@ -113,7 +120,9 @@ function openCreateOrg() {
 function openEditOrg(org: Organisation) {
   orgModalMode.value = 'edit'
   orgForm.value = {
+    name: org.name,
     admins: org.admins.join(', '),
+    email_patterns: org.email_patterns.join(', '),
     data: JSON.stringify(org.data, null, 2),
   }
   orgFormError.value = ''
@@ -124,28 +133,42 @@ function openEditOrg(org: Organisation) {
 async function submitOrgForm() {
   orgFormError.value = ''
   let parsedData: Record<string, unknown>
-  let parsedAdmins: string[]
   try {
     parsedData = JSON.parse(orgForm.value.data || '{}')
   } catch {
     orgFormError.value = 'Data field must be valid JSON'
     return
   }
-  parsedAdmins = orgForm.value.admins
+  const parsedAdmins = orgForm.value.admins
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const parsedPatterns = orgForm.value.email_patterns
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
 
   try {
     if (orgModalMode.value === 'create') {
-      const created = await createOrganisation(parsedAdmins, parsedData)
+      const created = await createOrganisation({
+        name: orgForm.value.name.trim(),
+        admins: parsedAdmins,
+        email_patterns: parsedPatterns,
+        data: parsedData,
+      })
       organisations.value.push(created)
       toast.success('Organisation created')
     } else if (selectedOrg.value) {
-      const updated = await updateOrganisation(selectedOrg.value.id, {
-        admins: parsedAdmins,
+      const payload: Parameters<typeof updateOrganisation>[1] = {
+        name: orgForm.value.name.trim(),
+        email_patterns: parsedPatterns,
         data: parsedData,
-      })
+      }
+      // Only system admins can change the org admins list
+      if (isSystemAdmin.value) {
+        payload.admins = parsedAdmins
+      }
+      const updated = await updateOrganisation(selectedOrg.value.id, payload)
       const idx = organisations.value.findIndex((o) => o.id === updated.id)
       if (idx !== -1) organisations.value[idx] = updated
       if (selectedOrg.value.id === updated.id) selectedOrg.value = updated
@@ -158,7 +181,7 @@ async function submitOrgForm() {
 }
 
 async function handleDeleteOrg(org: Organisation) {
-  if (!confirm(`Delete organisation ${org.id}? This cannot be undone.`)) return
+  if (!confirm(`Delete organisation "${org.name}"? This cannot be undone.`)) return
   try {
     await deleteOrganisation(org.id)
     organisations.value = organisations.value.filter((o) => o.id !== org.id)
@@ -173,8 +196,10 @@ async function handleDeleteOrg(org: Organisation) {
 function openEditProfile(profile: UserProfile) {
   profileEditTarget.value = profile
   profileForm.value = {
+    name: profile.name,
     is_teacher: profile.is_teacher,
     is_admin: profile.is_admin,
+    is_system_admin: profile.is_system_admin,
     organisation_id: profile.organisation_id ?? '',
   }
   showProfileModal.value = true
@@ -183,14 +208,18 @@ function openEditProfile(profile: UserProfile) {
 async function submitProfileForm() {
   if (!profileEditTarget.value) return
   try {
-    const updated = await updateProfile(profileEditTarget.value.auth_user_id, {
+    const payload: Parameters<typeof updateProfile>[1] = {
+      name: profileForm.value.name,
       is_teacher: profileForm.value.is_teacher,
+      // Both org admins and system admins can promote/demote org-admin status
       is_admin: profileForm.value.is_admin,
-      organisation_id: profileForm.value.organisation_id.trim() || null,
-    })
-    const idx = profiles.value.findIndex(
-      (p) => p.auth_user_id === updated.auth_user_id,
-    )
+    }
+    if (isSystemAdmin.value) {
+      payload.is_system_admin = profileForm.value.is_system_admin
+      payload.organisation_id = profileForm.value.organisation_id.trim() || null
+    }
+    const updated = await updateProfile(profileEditTarget.value.auth_user_id, payload)
+    const idx = profiles.value.findIndex((p) => p.auth_user_id === updated.auth_user_id)
     if (idx !== -1) profiles.value[idx] = updated
     showProfileModal.value = false
     toast.success('Profile updated')
@@ -208,9 +237,15 @@ const orgById = computed(() => {
 
 async function handleSignOut() {
   await supabase.auth.signOut()
-  store.user = null
-  store.session = null
+  store.logout()
   router.push('/login')
+}
+
+function copyToClipboard(text: string, label: string) {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(`${label} copied`),
+    () => toast.error('Failed to copy'),
+  )
 }
 </script>
 
@@ -221,13 +256,17 @@ async function handleSignOut() {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div
-            class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-red-600 to-orange-500"
+            class="flex h-9 w-9 items-center justify-center rounded-lg"
+            :class="isSystemAdmin ? 'bg-gradient-to-br from-red-600 to-orange-500' : 'bg-gradient-to-br from-blue-600 to-indigo-500'"
           >
-            <Shield class="h-5 w-5 text-white" />
+            <ShieldCheck v-if="isSystemAdmin" class="h-5 w-5 text-white" />
+            <Shield v-else class="h-5 w-5 text-white" />
           </div>
           <div>
             <h1 class="text-xl font-bold text-foreground">Admin Panel</h1>
-            <p class="text-xs text-muted-foreground">Organisations &amp; Users</p>
+            <p class="text-xs text-muted-foreground">
+              {{ isSystemAdmin ? 'System Administrator' : 'Organisation Administrator' }}
+            </p>
           </div>
         </div>
         <div class="flex items-center gap-3">
@@ -235,13 +274,7 @@ async function handleSignOut() {
             {{ store.user.email }}
           </span>
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8"
-            title="Sign out"
-            @click="handleSignOut"
-          >
+          <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">
             <LogOut class="h-4 w-4" />
           </Button>
         </div>
@@ -252,17 +285,18 @@ async function handleSignOut() {
     <div class="border-b border-border px-6 shrink-0">
       <nav class="flex gap-0">
         <button
-          v-for="tab in (['organisations', 'profiles'] as const)"
-          :key="tab"
           class="px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors"
-          :class="
-            activeTab === tab
-              ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          "
-          @click="activeTab = tab"
+          :class="activeTab === 'organisations' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'"
+          @click="activeTab = 'organisations'"
         >
-          {{ tab }}
+          Organisations
+        </button>
+        <button
+          class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+          :class="activeTab === 'profiles' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'"
+          @click="activeTab = 'profiles'"
+        >
+          {{ secondTabLabel }}
         </button>
       </nav>
     </div>
@@ -277,12 +311,12 @@ async function handleSignOut() {
         <div class="w-80 shrink-0 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <h2 class="text-base font-semibold">Organisations</h2>
-            <Button size="sm" @click="openCreateOrg">
+            <Button v-if="isSystemAdmin" size="sm" @click="openCreateOrg">
               <Plus class="h-4 w-4 mr-1" /> New
             </Button>
           </div>
 
-          <div v-if="loading" class="text-sm text-muted-foreground">Loading…</div>
+          <div v-if="loadingOrgs" class="text-sm text-muted-foreground">Loading…</div>
           <div v-else-if="organisations.length === 0" class="text-sm text-muted-foreground">
             No organisations yet.
           </div>
@@ -296,16 +330,26 @@ async function handleSignOut() {
           >
             <Building2 class="h-4 w-4 shrink-0 text-muted-foreground" />
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-mono truncate text-foreground">{{ org.id }}</p>
-              <p class="text-xs text-muted-foreground">{{ org.admins.length }} admin(s)</p>
+              <p class="text-sm font-medium truncate text-foreground">{{ org.name || '(unnamed)' }}</p>
+              <p class="text-xs text-muted-foreground font-mono truncate">{{ org.id }}</p>
             </div>
+            <button
+              class="shrink-0 p-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-muted transition-all"
+              title="Copy org ID"
+              @click.stop="copyToClipboard(org.id, 'Org ID')"
+            >
+              <Copy class="h-3.5 w-3.5" />
+            </button>
             <ChevronRight class="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
 
         <!-- Right: detail -->
         <div class="flex-1 min-w-0">
-          <div v-if="!selectedOrg" class="flex h-full items-center justify-center text-muted-foreground text-sm">
+          <div
+            v-if="!selectedOrg"
+            class="flex h-full items-center justify-center text-muted-foreground text-sm"
+          >
             Select an organisation to view details
           </div>
 
@@ -313,14 +357,15 @@ async function handleSignOut() {
             <!-- Org header -->
             <div class="flex items-start justify-between gap-4">
               <div>
-                <p class="text-xs text-muted-foreground mb-1">Organisation ID</p>
-                <p class="font-mono text-sm break-all">{{ selectedOrg.id }}</p>
+                <h2 class="text-lg font-semibold">{{ selectedOrg.name || '(unnamed)' }}</h2>
+                <p class="text-xs text-muted-foreground font-mono mt-0.5">{{ selectedOrg.id }}</p>
               </div>
               <div class="flex gap-2 shrink-0">
                 <Button size="sm" variant="outline" @click="openEditOrg(selectedOrg)">
                   <Pencil class="h-4 w-4 mr-1" /> Edit
                 </Button>
                 <Button
+                  v-if="isSystemAdmin"
                   size="sm"
                   variant="destructive"
                   @click="handleDeleteOrg(selectedOrg)"
@@ -330,11 +375,36 @@ async function handleSignOut() {
               </div>
             </div>
 
-            <!-- Admins -->
+            <!-- Email patterns -->
             <Card>
               <CardHeader class="pb-2">
-                <CardTitle class="text-sm">Admin Users</CardTitle>
-                <CardDescription class="text-xs">auth.users UUIDs with admin access</CardDescription>
+                <CardTitle class="text-sm">Email Patterns</CardTitle>
+                <CardDescription class="text-xs">
+                  At least one must be a substring of the user's email at signup
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div v-if="selectedOrg.email_patterns.length === 0" class="text-xs text-muted-foreground">
+                  No restrictions — open to everyone
+                </div>
+                <div v-else class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="p in selectedOrg.email_patterns"
+                    :key="p"
+                    class="inline-flex items-center rounded-full bg-blue-500/10 text-blue-600 text-xs px-2 py-0.5 font-mono"
+                  >
+                    {{ p }}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <!-- Admins (system admin sees the list; org-admin just sees their own role) -->
+            <!-- Card v-if="isSystemAdmin"-->
+            <Card>
+              <CardHeader class="pb-2">
+                <CardTitle class="text-sm">Org Admin Users</CardTitle>
+                <CardDescription class="text-xs">auth.users UUIDs with org-level admin access</CardDescription>
               </CardHeader>
               <CardContent>
                 <div v-if="selectedOrg.admins.length === 0" class="text-xs text-muted-foreground">
@@ -361,57 +431,18 @@ async function handleSignOut() {
                 <pre class="text-xs bg-muted rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap break-all">{{ JSON.stringify(selectedOrg.data, null, 2) }}</pre>
               </CardContent>
             </Card>
-
-            <!-- Members -->
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm">Members</CardTitle>
-                <CardDescription class="text-xs">Profiles with this organisation_id</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div v-if="orgMembers.length === 0" class="text-xs text-muted-foreground">
-                  No members found
-                </div>
-                <table v-else class="w-full text-xs">
-                  <thead>
-                    <tr class="text-left text-muted-foreground border-b border-border">
-                      <th class="pb-1 pr-4 font-medium">User ID</th>
-                      <th class="pb-1 pr-4 font-medium">Teacher</th>
-                      <th class="pb-1 font-medium">Admin</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="m in orgMembers"
-                      :key="m.auth_user_id"
-                      class="border-b border-border/50 last:border-0"
-                    >
-                      <td class="py-1.5 pr-4 font-mono truncate max-w-[200px]">{{ m.auth_user_id }}</td>
-                      <td class="py-1.5 pr-4">
-                        <Check v-if="m.is_teacher" class="h-3.5 w-3.5 text-green-500" />
-                        <X v-else class="h-3.5 w-3.5 text-muted-foreground" />
-                      </td>
-                      <td class="py-1.5">
-                        <Check v-if="m.is_admin" class="h-3.5 w-3.5 text-green-500" />
-                        <X v-else class="h-3.5 w-3.5 text-muted-foreground" />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
 
-      <!-- ── PROFILES TAB ── -->
+      <!-- ── PROFILES / MEMBERS TAB ── -->
       <div v-if="activeTab === 'profiles'" class="space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold">User Profiles</h2>
+          <h2 class="text-base font-semibold">{{ secondTabLabel }}</h2>
           <Button size="sm" variant="outline" @click="loadProfiles">Refresh</Button>
         </div>
 
-        <div v-if="loading" class="text-sm text-muted-foreground">Loading…</div>
+        <div v-if="loadingProfiles" class="text-sm text-muted-foreground">Loading…</div>
         <div v-else-if="profiles.length === 0" class="text-sm text-muted-foreground">
           No profiles found.
         </div>
@@ -420,10 +451,11 @@ async function handleSignOut() {
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-muted/50 text-left text-xs text-muted-foreground">
-                <th class="px-4 py-2 font-medium">User ID</th>
+                <th class="px-4 py-2 font-medium">Name</th>
                 <th class="px-4 py-2 font-medium">Teacher</th>
-                <th class="px-4 py-2 font-medium">Admin</th>
-                <th class="px-4 py-2 font-medium">Organisation</th>
+                <th class="px-4 py-2 font-medium">Org Admin</th>
+                <th v-if="isSystemAdmin" class="px-4 py-2 font-medium">Sys Admin</th>
+                <th v-if="isSystemAdmin" class="px-4 py-2 font-medium">Organisation</th>
                 <th class="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
@@ -433,27 +465,44 @@ async function handleSignOut() {
                 :key="profile.auth_user_id"
                 class="border-t border-border hover:bg-muted/30 transition-colors"
               >
-                <td class="px-4 py-2 font-mono text-xs max-w-[220px] truncate">
-                  {{ profile.auth_user_id }}
+                <td class="px-4 py-2">
+                  <p class="font-medium">{{ profile.name || '—' }}</p>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <p class="font-mono text-xs text-muted-foreground truncate max-w-[200px]">
+                      {{ profile.auth_user_id }}
+                    </p>
+                    <button
+                      class="shrink-0 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title="Copy user ID"
+                      @click="copyToClipboard(profile.auth_user_id, 'User ID')"
+                    >
+                      <Copy class="h-3 w-3" />
+                    </button>
+                  </div>
                 </td>
                 <td class="px-4 py-2">
                   <span
                     class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                     :class="profile.is_teacher ? 'bg-blue-500/15 text-blue-600' : 'bg-muted text-muted-foreground'"
-                  >
-                    {{ profile.is_teacher ? 'Yes' : 'No' }}
-                  </span>
+                  >{{ profile.is_teacher ? 'Yes' : 'No' }}</span>
                 </td>
                 <td class="px-4 py-2">
                   <span
                     class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                    :class="profile.is_admin ? 'bg-red-500/15 text-red-600' : 'bg-muted text-muted-foreground'"
-                  >
-                    {{ profile.is_admin ? 'Yes' : 'No' }}
-                  </span>
+                    :class="profile.is_admin ? 'bg-indigo-500/15 text-indigo-600' : 'bg-muted text-muted-foreground'"
+                  >{{ profile.is_admin ? 'Yes' : 'No' }}</span>
                 </td>
-                <td class="px-4 py-2 text-xs font-mono text-muted-foreground max-w-[180px] truncate">
-                  <span v-if="profile.organisation_id">
+                <td v-if="isSystemAdmin" class="px-4 py-2">
+                  <span
+                    class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    :class="profile.is_system_admin ? 'bg-red-500/15 text-red-600' : 'bg-muted text-muted-foreground'"
+                  >{{ profile.is_system_admin ? 'Yes' : 'No' }}</span>
+                </td>
+                <td v-if="isSystemAdmin" class="px-4 py-2 text-xs text-muted-foreground max-w-[180px] truncate">
+                  <span v-if="profile.organisation_id && orgById[profile.organisation_id]">
+                    {{ orgById[profile.organisation_id].name || profile.organisation_id }}
+                  </span>
+                  <span v-else-if="profile.organisation_id" class="font-mono">
                     {{ profile.organisation_id }}
                   </span>
                   <span v-else class="italic">—</span>
@@ -478,7 +527,7 @@ async function handleSignOut() {
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       @click.self="showOrgModal = false"
     >
-      <Card class="w-full max-w-lg mx-4">
+      <Card class="w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <CardHeader>
           <div class="flex items-center justify-between">
             <CardTitle>
@@ -493,25 +542,45 @@ async function handleSignOut() {
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
+          <!-- Name -->
           <div class="space-y-1.5">
-            <Label for="org-admins">Admin User IDs</Label>
+            <Label for="org-name">Name</Label>
+            <Input id="org-name" v-model="orgForm.name" placeholder="Acme School" />
+          </div>
+
+          <!-- Email patterns -->
+          <div class="space-y-1.5">
+            <Label for="org-patterns">Email Patterns</Label>
             <Input
-              id="org-admins"
-              v-model="orgForm.admins"
-              placeholder="uuid1, uuid2, …"
+              id="org-patterns"
+              v-model="orgForm.email_patterns"
+              placeholder="@acme.com, @students.acme.com"
             />
+            <p class="text-xs text-muted-foreground">
+              Comma-separated substrings. Leave blank to allow any email.
+            </p>
+          </div>
+
+          <!-- Admin user IDs (system admin only) -->
+          <!-- div v-if="isSystemAdmin" class="space-y-1.5" -->
+          <div class="space-y-1.5">
+            <Label for="org-admins">Org Admin User IDs</Label>
+            <Input id="org-admins" v-model="orgForm.admins" placeholder="uuid1, uuid2, …" />
             <p class="text-xs text-muted-foreground">Comma-separated auth.users UUIDs</p>
           </div>
+
+          <!-- Data JSON -->
           <div class="space-y-1.5">
             <Label for="org-data">Data (JSON)</Label>
             <textarea
               id="org-data"
               v-model="orgForm.data"
-              rows="6"
+              rows="5"
               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
               placeholder="{}"
             />
           </div>
+
           <p v-if="orgFormError" class="text-xs text-destructive">{{ orgFormError }}</p>
           <Button class="w-full" @click="submitOrgForm">
             <Check class="h-4 w-4 mr-2" />
@@ -542,6 +611,13 @@ async function handleSignOut() {
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
+          <!-- Name -->
+          <div class="space-y-1.5">
+            <Label for="edit-name">Name</Label>
+            <Input id="edit-name" v-model="profileForm.name" placeholder="Display name" />
+          </div>
+
+          <!-- Is Teacher -->
           <div class="flex items-center gap-3">
             <input
               id="edit-is-teacher"
@@ -551,6 +627,8 @@ async function handleSignOut() {
             />
             <Label for="edit-is-teacher">Is Teacher</Label>
           </div>
+
+          <!-- Is Org Admin (both org admins and system admins can toggle this) -->
           <div class="flex items-center gap-3">
             <input
               id="edit-is-admin"
@@ -558,21 +636,35 @@ async function handleSignOut() {
               v-model="profileForm.is_admin"
               class="h-4 w-4 rounded border-input"
             />
-            <Label for="edit-is-admin">Is Admin</Label>
+            <Label for="edit-is-admin">Is Org Admin</Label>
           </div>
-          <div class="space-y-1.5">
-            <Label for="edit-org-id">Organisation ID</Label>
-            <Input
+
+          <!-- Is System Admin (system admin only) -->
+          <div v-if="isSystemAdmin" class="flex items-center gap-3">
+            <input
+              id="edit-is-system-admin"
+              type="checkbox"
+              v-model="profileForm.is_system_admin"
+              class="h-4 w-4 rounded border-input"
+            />
+            <Label for="edit-is-system-admin" class="text-red-600">Is System Admin</Label>
+          </div>
+
+          <!-- Organisation (system admin only) -->
+          <div v-if="isSystemAdmin" class="space-y-1.5">
+            <Label for="edit-org-id">Organisation</Label>
+            <select
               id="edit-org-id"
               v-model="profileForm.organisation_id"
-              placeholder="Leave blank to unset"
-              list="org-datalist"
-            />
-            <datalist id="org-datalist">
-              <option v-for="org in organisations" :key="org.id" :value="org.id" />
-            </datalist>
-            <p class="text-xs text-muted-foreground">UUID of the organisation, or blank to unset</p>
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground"
+            >
+              <option value="">— No organisation —</option>
+              <option v-for="org in organisations" :key="org.id" :value="org.id">
+                {{ org.name || org.id }}
+              </option>
+            </select>
           </div>
+
           <Button class="w-full" @click="submitProfileForm">
             <Check class="h-4 w-4 mr-2" />
             Save Changes

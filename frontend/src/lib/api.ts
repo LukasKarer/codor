@@ -45,17 +45,31 @@ export interface AppConfig {
 
 export interface UserProfile {
   auth_user_id: string
+  name: string
   is_teacher: boolean
+  /** Org-level admin: can edit their own organisation */
   is_admin: boolean
+  /** System-level super-admin: can edit everything */
+  is_system_admin: boolean
   organisation_id: string | null
 }
 
 export interface Organisation {
   id: string
-  /** Array of auth.users UUIDs that have admin access to this org */
+  name: string
+  /** Array of auth.users UUIDs that have org-level admin access */
   admins: string[]
+  /** Array of email substrings; at least one must match on signup */
+  email_patterns: string[]
   /** Arbitrary JSON data stored for the organisation */
   data: Record<string, unknown>
+}
+
+/** Minimal shape returned by the public /organisations/public endpoint */
+export interface PublicOrganisation {
+  id: string
+  name: string
+  email_patterns: string[]
 }
 
 // ============================================
@@ -138,9 +152,26 @@ export async function getConfig(): Promise<AppConfig> {
 /**
  * GET /v1/profile/me
  * Returns the current user's profile flags from the DB.
+ *
+ * Calls are deduplicated within a single page lifetime: concurrent callers
+ * (App.vue onMounted + router guard) share one in-flight request. Call
+ * invalidateProfileCache() after any mutation that changes profile fields.
  */
+let _profileCache: Promise<UserProfile> | null = null
+
+export function invalidateProfileCache(): void {
+  _profileCache = null
+}
+
 export async function getProfile(): Promise<UserProfile> {
-  return apiCall<UserProfile>('/v1/profile/me')
+  if (!_profileCache) {
+    _profileCache = apiCall<UserProfile>('/v1/profile/me').catch((err) => {
+      // Don't cache failures so the next call retries
+      _profileCache = null
+      throw err
+    })
+  }
+  return _profileCache
 }
 
 // ============================================
@@ -253,6 +284,25 @@ export async function getAllParticipantsWithDetails(exerciseId: string): Promise
 }
 
 // ============================================
+// PUBLIC — used on signup, no auth needed
+// ============================================
+
+export async function getPublicOrganisations(): Promise<PublicOrganisation[]> {
+  return apiCall<PublicOrganisation[]>('/v1/organisations/public', 'GET', undefined, false, false)
+}
+
+/**
+ * POST /v1/profile/setup
+ * Saves the user's display name and organisation after signup.
+ */
+export async function setupProfile(name: string, organisationId: string | null): Promise<UserProfile> {
+  return apiCall<UserProfile>('/v1/profile/setup', 'POST', {
+    name,
+    organisation_id: organisationId,
+  })
+}
+
+// ============================================
 // ADMIN — ORGANISATIONS
 // ============================================
 
@@ -260,11 +310,13 @@ export async function getOrganisations(): Promise<Organisation[]> {
   return apiCall<Organisation[]>('/v1/admin/organisations')
 }
 
-export async function createOrganisation(
-  admins: string[],
-  data: Record<string, unknown>,
-): Promise<Organisation> {
-  return apiCall<Organisation>('/v1/admin/organisations/new', 'POST', { admins, data })
+export async function createOrganisation(payload: {
+  name: string
+  admins: string[]
+  email_patterns: string[]
+  data: Record<string, unknown>
+}): Promise<Organisation> {
+  return apiCall<Organisation>('/v1/admin/organisations/new', 'POST', payload)
 }
 
 export async function getOrganisation(orgId: string): Promise<Organisation> {
@@ -273,7 +325,12 @@ export async function getOrganisation(orgId: string): Promise<Organisation> {
 
 export async function updateOrganisation(
   orgId: string,
-  payload: { admins?: string[]; data?: Record<string, unknown> },
+  payload: {
+    name?: string
+    admins?: string[]
+    email_patterns?: string[]
+    data?: Record<string, unknown>
+  },
 ): Promise<Organisation> {
   return apiCall<Organisation>(`/v1/admin/organisation/${orgId}/update`, 'POST', payload)
 }
@@ -296,7 +353,13 @@ export async function getProfiles(): Promise<UserProfile[]> {
 
 export async function updateProfile(
   authUserId: string,
-  payload: { is_teacher?: boolean; is_admin?: boolean; organisation_id?: string | null },
+  payload: {
+    name?: string
+    is_teacher?: boolean
+    is_admin?: boolean
+    is_system_admin?: boolean
+    organisation_id?: string | null
+  },
 ): Promise<UserProfile> {
   return apiCall<UserProfile>(`/v1/admin/profile/${authUserId}/update`, 'POST', payload)
 }

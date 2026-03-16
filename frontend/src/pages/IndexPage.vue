@@ -11,7 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAppStore } from '@/stores/app'
-import { getExerciseInfo, parseExerciseContent, enrollUser, pushExerciseContent, getConfig } from '@/lib/api'
+import {
+  getExerciseInfo,
+  parseExerciseContent,
+  enrollUser,
+  pushExerciseContent,
+  getConfig,
+} from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
 const store = useAppStore()
@@ -91,9 +97,12 @@ const loadExercise = async (overrideId?: string) => {
       // student can enter a correct ID. Clear stale localStorage so it doesn't
       // auto-trigger on the next page load.
       localStorage.removeItem('currentExerciseId')
-      const msg = e instanceof Error && e.message.toLowerCase().includes('404')
-        ? 'Exercise not found. Please check the ID and try again.'
-        : (e instanceof Error ? e.message : 'Failed to load exercise')
+      const msg =
+        e instanceof Error && e.message.toLowerCase().includes('404')
+          ? 'Exercise not found. Please check the ID and try again.'
+          : e instanceof Error
+            ? e.message
+            : 'Failed to load exercise'
       promptError.value = msg
       promptExerciseId.value = ''
       showExercisePrompt.value = true
@@ -169,7 +178,7 @@ onMounted(() => {
         <CardHeader>
           <div class="flex items-center gap-2">
             <BookOpen class="h-5 w-5 text-primary" />
-            <CardTitle>Enter Exercise ID</CardTitle>
+            <CardTitle class="leading-5">Enter Exercise ID</CardTitle>
           </div>
           <CardDescription>
             Paste the exercise ID given to you by your teacher to join the session.
@@ -187,11 +196,7 @@ onMounted(() => {
             />
             <p v-if="promptError" class="text-sm text-destructive">{{ promptError }}</p>
           </div>
-          <Button
-            class="w-full"
-            :disabled="!promptExerciseId.trim()"
-            @click="handlePromptSubmit"
-          >
+          <Button class="w-full" :disabled="!promptExerciseId.trim()" @click="handlePromptSubmit">
             <GraduationCap class="mr-2 h-4 w-4" />
             Join Exercise
           </Button>
@@ -201,7 +206,10 @@ onMounted(() => {
   </Transition>
 
   <!-- Error (exercise load failed after a valid ID was provided) -->
-  <div v-if="error && !showExercisePrompt" class="flex h-screen items-center justify-center bg-background">
+  <div
+    v-if="error && !showExercisePrompt"
+    class="flex h-screen items-center justify-center bg-background"
+  >
     <Card class="w-96">
       <CardHeader>
         <CardTitle class="text-destructive">Error</CardTitle>
@@ -217,7 +225,10 @@ onMounted(() => {
   </div>
 
   <!-- Main student view -->
-  <div v-if="!isLoading && !error && !showExercisePrompt" class="flex h-screen flex-col bg-background">
+  <div
+    v-if="!isLoading && !error && !showExercisePrompt"
+    class="flex h-screen flex-col bg-background"
+  >
     <!-- Header -->
     <header class="flex items-center justify-between border-b border-border px-6 py-3">
       <div class="flex items-center gap-3">
