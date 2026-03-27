@@ -9,13 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'vue-sonner'
 import { supabase } from '@/lib/supabase'
-import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 import { getProfile, getPublicOrganisations, setupProfile, invalidateProfileCache } from '@/lib/api'
 import type { PublicOrganisation } from '@/lib/api'
 
 const router = useRouter()
 const route = useRoute()
-const store = useAppStore()
+const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
@@ -53,8 +53,8 @@ onMounted(async () => {
       isSetupMode.value = false
       return
     }
-    store.user = data.session.user
-    store.session = data.session
+    authStore.user = data.session.user
+    authStore.session = data.session
     email.value = data.session.user.email ?? ''
     isSignUp.value = true
   }
@@ -98,11 +98,7 @@ async function handleSetupProfile() {
     await setupProfile(signupName.value.trim(), signupOrgId.value)
     invalidateProfileCache()
     const profile = await getProfile()
-    store.isTeacher = profile.is_teacher
-    store.isAdmin = profile.is_admin
-    store.isSystemAdmin = profile.is_system_admin
-    store.userName = profile.name
-    store.organisationId = profile.organisation_id
+    authStore.applyProfile(profile)
     toast.success('Profile saved')
     router.push(profile.is_teacher ? '/teacher' : redirectTo)
   } catch (e: unknown) {
@@ -153,16 +149,12 @@ const handleEmailAuth = async () => {
       })
 
       if (data.session) {
-        store.user = data.user
-        store.session = data.session
+        authStore.user = data.user
+        authStore.session = data.session
         try {
           invalidateProfileCache()
           const profile = await getProfile()
-          store.isTeacher = profile.is_teacher
-          store.isAdmin = profile.is_admin
-          store.isSystemAdmin = profile.is_system_admin
-          store.userName = profile.name
-          store.organisationId = profile.organisation_id
+          authStore.applyProfile(profile)
           router.push(profile.is_teacher ? '/teacher' : redirectTo)
         } catch {
           router.push(redirectTo)
@@ -174,17 +166,13 @@ const handleEmailAuth = async () => {
         password: password.value,
       })
       if (error) throw error
-      store.user = data.user
-      store.session = data.session
+      authStore.user = data.user
+      authStore.session = data.session
       // Determine destination from DB profile (source of truth for role flags)
       try {
         invalidateProfileCache()
         const profile = await getProfile()
-        store.isTeacher = profile.is_teacher
-        store.isAdmin = profile.is_admin
-        store.isSystemAdmin = profile.is_system_admin
-        store.userName = profile.name
-        store.organisationId = profile.organisation_id
+        authStore.applyProfile(profile)
         router.push(profile.is_teacher ? '/teacher' : redirectTo)
       } catch {
         router.push(redirectTo)

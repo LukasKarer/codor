@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { toast } from 'vue-sonner'
 import { supabase } from '@/lib/supabase'
-import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 import type { Organisation, UserProfile } from '@/lib/api'
 import {
   getOrganisations,
@@ -37,10 +37,10 @@ type Tab = 'organisations' | 'profiles'
 
 // ─── State ──────────────────────────────────────────────────
 const router = useRouter()
-const store = useAppStore()
+const authStore = useAuthStore()
 
 /** Whether the current user is a full system admin (not just org admin) */
-const isSystemAdmin = computed(() => store.isSystemAdmin)
+const isSystemAdmin = computed(() => authStore.isSystemAdmin)
 
 /** Label for the second tab */
 const secondTabLabel = computed(() => isSystemAdmin.value ? 'Profiles' : 'Members')
@@ -237,7 +237,7 @@ const orgById = computed(() => {
 
 async function handleSignOut() {
   await supabase.auth.signOut()
-  store.logout()
+  authStore.logout()
   router.push('/login')
 }
 
@@ -270,8 +270,8 @@ function copyToClipboard(text: string, label: string) {
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span v-if="store.user?.email" class="text-xs text-muted-foreground hidden sm:block">
-            {{ store.user.email }}
+          <span v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
+            {{ authStore.user.email }}
           </span>
           <ThemeToggle />
           <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">
@@ -500,7 +500,7 @@ function copyToClipboard(text: string, label: string) {
                 </td>
                 <td v-if="isSystemAdmin" class="px-4 py-2 text-xs text-muted-foreground max-w-[180px] truncate">
                   <span v-if="profile.organisation_id && orgById[profile.organisation_id]">
-                    {{ orgById[profile.organisation_id].name || profile.organisation_id }}
+                    {{ orgById[profile.organisation_id]?.name || profile.organisation_id }}
                   </span>
                   <span v-else-if="profile.organisation_id" class="font-mono">
                     {{ profile.organisation_id }}

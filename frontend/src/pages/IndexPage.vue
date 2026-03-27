@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
+import { useExerciseStore } from '@/stores/exercise'
 import {
   getExerciseInfo,
   parseExerciseContent,
@@ -20,7 +21,8 @@ import {
 } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
-const store = useAppStore()
+const authStore = useAuthStore()
+const exerciseStore = useExerciseStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -39,18 +41,18 @@ let saveInterval: ReturnType<typeof setInterval> | null = null
 const startAutoSave = () => {
   if (saveInterval) clearInterval(saveInterval)
   saveInterval = setInterval(async () => {
-    if (!store.exerciseId || !store.code) return
+    if (!exerciseStore.exerciseId || !exerciseStore.code) return
     try {
-      await pushExerciseContent(store.exerciseId, store.code)
+      await pushExerciseContent(exerciseStore.exerciseId, exerciseStore.code)
       console.log('[AutoSave] Code pushed')
     } catch (e) {
       console.error('[AutoSave] Push failed:', e)
     }
-  }, store.pushIntervalMs)
+  }, exerciseStore.pushIntervalMs)
 }
 
 watch(
-  () => store.userId,
+  () => exerciseStore.userId,
   (val) => {
     if (val) startAutoSave()
     else if (saveInterval) clearInterval(saveInterval)
@@ -70,7 +72,7 @@ const loadExercise = async (overrideId?: string) => {
     // Fetch push interval from backend config
     try {
       const config = await getConfig()
-      store.pushIntervalMs = config.pushIntervalMs
+      exerciseStore.pushIntervalMs = config.pushIntervalMs
     } catch {
       // keep default
     }
@@ -112,20 +114,19 @@ const loadExercise = async (overrideId?: string) => {
 
     const parsedContent = parseExerciseContent(exerciseInfo.content)
 
-    store.exerciseId = targetExerciseId
-    store.exerciseDescription = parsedContent.description
-    store.steps = parsedContent.steps.map((step, idx) => ({ ...step, id: idx + 1 }))
+    exerciseStore.exerciseId = targetExerciseId
+    exerciseStore.exerciseDescription = parsedContent.description
     exerciseTitle.value = parsedContent.title
     // Set the exercise's default code first; overwritten below if the student has saved work
-    store.code = parsedContent.code
+    exerciseStore.code = parsedContent.code
 
     // Enroll the authenticated user (idempotent for non-test sessions).
     // The response includes saved_content — the student's last pushed code — so
     // we can restore the editor exactly where they left off.
     const enrollment = await enrollUser(targetExerciseId, isTestMode)
-    store.userId = enrollment.sub
+    exerciseStore.userId = enrollment.sub
     if (enrollment.saved_content) {
-      store.code = enrollment.saved_content
+      exerciseStore.code = enrollment.saved_content
     }
 
     localStorage.setItem('currentExerciseId', targetExerciseId)
@@ -150,9 +151,8 @@ const handlePromptSubmit = async () => {
 
 const handleSignOut = async () => {
   await supabase.auth.signOut()
-  store.user = null
-  store.session = null
-  store.userId = null
+  authStore.logout()
+  exerciseStore.userId = null
   localStorage.removeItem('currentExerciseId')
   router.push('/login')
 }
@@ -249,8 +249,8 @@ onMounted(() => {
           <GraduationCap class="h-4 w-4 text-primary" />
           <span class="text-sm font-medium text-foreground">{{ exerciseTitle }}</span>
         </div>
-        <div v-if="store.user?.email" class="text-xs text-muted-foreground hidden sm:block">
-          {{ store.user.email }}
+        <div v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
+          {{ authStore.user.email }}
         </div>
         <ThemeToggle />
         <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">

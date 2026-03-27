@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { requireSystemAdmin, requireAuth } from '../middleware/auth';
+import type { Json } from '../lib/database.types';
 
 const router = Router();
 
@@ -82,7 +83,7 @@ router.post('/admin/organisations/new', requireSystemAdmin, async (req: Request,
   const name: string = req.body?.name ?? '';
   const admins: string[] = req.body?.admins ?? [];
   const email_patterns: string[] = req.body?.email_patterns ?? [];
-  const data: Record<string, unknown> = req.body?.data ?? {};
+  const data: Record<string, Json> = (req.body?.data ?? {}) as Record<string, Json>;
 
   const { data: row, error } = await supabase
     .from('organisations')

@@ -32,6 +32,12 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void
 }
 
+async function getAuthToken(): Promise<string | null> {
+  const { supabase } = await import('./supabase')
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
+
 // ─── SSE streaming helper ──────────────────────────────────────────────────
 
 async function consumeSSE(
@@ -39,9 +45,17 @@ async function consumeSSE(
   body: unknown,
   callbacks: StreamCallbacks,
 ): Promise<void> {
+  const token = await getAuthToken()
+  if (!token) {
+    throw new Error('Not authenticated')
+  }
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(body),
   })
 
@@ -159,9 +173,15 @@ export async function getLLMHelp(
 }
 
 export async function generateTasks(code: string, description: string): Promise<Step[]> {
+  const token = await getAuthToken()
+  if (!token) throw new Error('Not authenticated')
+
   const response = await fetch(`${API_BASE_URL}/v1/ai/generate-tasks`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ code, description }),
   })
   if (!response.ok) {
@@ -173,9 +193,15 @@ export async function generateTasks(code: string, description: string): Promise<
 }
 
 export async function generateDescription(code: string): Promise<string> {
+  const token = await getAuthToken()
+  if (!token) throw new Error('Not authenticated')
+
   const response = await fetch(`${API_BASE_URL}/v1/ai/generate-description`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ code }),
   })
   if (!response.ok) {

@@ -130,3 +130,57 @@ CREATE TABLE IF NOT EXISTS entries (
 
 CREATE INDEX IF NOT EXISTS idx_entries_exercise_id  ON entries(exercise_id);
 CREATE INDEX IF NOT EXISTS idx_entries_auth_user_id ON entries(auth_user_id);
+
+-- ============================================================
+-- entry_snapshots table (autosave history)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS entry_snapshots (
+  id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  entry_id      uuid    NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+  creation_time BIGINT  NOT NULL,
+  content       TEXT    NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_entry_snapshots_entry_id ON entry_snapshots(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entry_snapshots_time     ON entry_snapshots(creation_time);
+
+-- ============================================================
+-- ai_conversations table (persisted AI tutor chat)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id                uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id          uuid    NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+  creation_time     BIGINT  NOT NULL,
+  prompt_type       TEXT    NOT NULL DEFAULT 'chat',
+  user_message      TEXT    DEFAULT NULL,
+  assistant_message TEXT    NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_entry_id ON ai_conversations(entry_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_time     ON ai_conversations(creation_time);
+
+-- ============================================================
+-- student_reports table (AI-generated per-student exercise report)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS student_reports (
+  id                    uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id              uuid    NOT NULL UNIQUE REFERENCES entries(id) ON DELETE CASCADE,
+  exercise_id           BIGINT  NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+  creation_time         BIGINT  NOT NULL,
+  score                 INT     NOT NULL,
+  time_spent_minutes    INT     NOT NULL DEFAULT 0,
+  ai_interactions_count INT     NOT NULL DEFAULT 0,
+  report_json           jsonb   NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_reports_exercise_id ON student_reports(exercise_id);
+
+-- ============================================================
+-- exercise_reports table (AI-generated exercise-wide report)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS exercise_reports (
+  id            uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+  exercise_id   BIGINT  NOT NULL UNIQUE REFERENCES exercises(id) ON DELETE CASCADE,
+  creation_time BIGINT  NOT NULL,
+  report_json   jsonb   NOT NULL DEFAULT '{}'::jsonb
+);

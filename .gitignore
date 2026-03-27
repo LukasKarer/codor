@@ -1,3 +1,7 @@
 backend-php.zip
 frontend-react.zip
 pitch/
+package.json
+package-lock.json
+
+node_modules/

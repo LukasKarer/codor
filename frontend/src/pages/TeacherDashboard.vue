@@ -11,10 +11,10 @@ import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { toast } from 'vue-sonner'
 import { supabase } from '@/lib/supabase'
-import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const store = useAppStore()
+const authStore = useAuthStore()
 
 const lastExerciseId = ref<string | null>(null)
 const copiedLink = ref(false)
@@ -39,8 +39,7 @@ const handleCopyLink = (exerciseId: string) => {
 
 const handleSignOut = async () => {
   await supabase.auth.signOut()
-  store.user = null
-  store.session = null
+  authStore.logout()
   router.push('/login')
 }
 
@@ -71,8 +70,8 @@ const handleTryAsStudent = () => {
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span v-if="store.user?.email" class="text-xs text-muted-foreground hidden sm:block">
-            {{ store.user.email }}
+          <span v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
+            {{ authStore.user.email }}
           </span>
           <ThemeToggle />
           <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">
@@ -88,7 +87,7 @@ const handleTryAsStudent = () => {
         <!-- Welcome Section -->
         <div>
           <h2 class="text-3xl font-bold text-foreground">
-            Welcome back{{ store.user?.email ? ', ' + store.user.email.split('@')[0] : '' }}!
+            Welcome back{{ authStore.user?.email ? ', ' + authStore.user.email.split('@')[0] : '' }}!
           </h2>
           <p class="mt-2 text-muted-foreground">
             Manage your coding exercises and track student progress

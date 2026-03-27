@@ -126,6 +126,142 @@ export interface Database {
           }
         ];
       };
+      entry_snapshots: {
+        Row: {
+          id: number;
+          entry_id: string;
+          creation_time: number;
+          content: string;
+        };
+        Insert: {
+          id?: number;
+          entry_id: string;
+          creation_time: number;
+          content?: string;
+        };
+        Update: {
+          id?: number;
+          entry_id?: string;
+          creation_time?: number;
+          content?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'entry_snapshots_entry_id_fkey';
+            columns: ['entry_id'];
+            referencedRelation: 'entries';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      ai_conversations: {
+        Row: {
+          id: string;
+          entry_id: string;
+          creation_time: number;
+          prompt_type: string;
+          user_message: string | null;
+          assistant_message: string;
+        };
+        Insert: {
+          id?: string;
+          entry_id: string;
+          creation_time: number;
+          prompt_type?: string;
+          user_message?: string | null;
+          assistant_message?: string;
+        };
+        Update: {
+          id?: string;
+          entry_id?: string;
+          creation_time?: number;
+          prompt_type?: string;
+          user_message?: string | null;
+          assistant_message?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ai_conversations_entry_id_fkey';
+            columns: ['entry_id'];
+            referencedRelation: 'entries';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      student_reports: {
+        Row: {
+          id: string;
+          entry_id: string;
+          exercise_id: number;
+          creation_time: number;
+          score: number;
+          time_spent_minutes: number;
+          ai_interactions_count: number;
+          report_json: Record<string, Json>;
+        };
+        Insert: {
+          id?: string;
+          entry_id: string;
+          exercise_id: number;
+          creation_time: number;
+          score: number;
+          time_spent_minutes?: number;
+          ai_interactions_count?: number;
+          report_json?: Record<string, Json>;
+        };
+        Update: {
+          id?: string;
+          entry_id?: string;
+          exercise_id?: number;
+          creation_time?: number;
+          score?: number;
+          time_spent_minutes?: number;
+          ai_interactions_count?: number;
+          report_json?: Record<string, Json>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'student_reports_entry_id_fkey';
+            columns: ['entry_id'];
+            referencedRelation: 'entries';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'student_reports_exercise_id_fkey';
+            columns: ['exercise_id'];
+            referencedRelation: 'exercises';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      exercise_reports: {
+        Row: {
+          id: string;
+          exercise_id: number;
+          creation_time: number;
+          report_json: Record<string, Json>;
+        };
+        Insert: {
+          id?: string;
+          exercise_id: number;
+          creation_time: number;
+          report_json?: Record<string, Json>;
+        };
+        Update: {
+          id?: string;
+          exercise_id?: number;
+          creation_time?: number;
+          report_json?: Record<string, Json>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'exercise_reports_exercise_id_fkey';
+            columns: ['exercise_id'];
+            referencedRelation: 'exercises';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

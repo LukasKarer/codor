@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent } from '@/components/ui/card'
-import { useAppStore } from '@/stores/app'
+import { useExerciseStore } from '@/stores/exercise'
 import { streamChat, handleHighlightCode, getLLMHelp } from '@/lib/ai'
+import { saveAiInteraction } from '@/lib/api'
 
-const store = useAppStore()
+const exerciseStore = useExerciseStore()
 const input = ref('')
 const isExerciseExpanded = ref(false)
 const shouldShowToggle = ref(false)
@@ -17,7 +18,7 @@ const exerciseRef = ref<HTMLParagraphElement | null>(null)
 
 // Scroll to bottom when messages change
 watch(
-  () => store.messages.length,
+  () => exerciseStore.messages.length,
   async () => {
     await nextTick()
     if (scrollAreaRef.value) {
@@ -31,7 +32,7 @@ watch(
 
 // Check if exercise description overflows 6 lines
 watch(
-  () => store.exerciseDescription,
+  () => exerciseStore.exerciseDescription,
   async () => {
     await nextTick()
     if (exerciseRef.value) {
@@ -44,11 +45,11 @@ watch(
 )
 
 async function handleGetHelp() {
-  if (store.isStreaming) return
+  if (exerciseStore.isStreaming) return
 
-  store.isStreaming = true
+  exerciseStore.isStreaming = true
   const helpMessageId = Date.now()
-  store.messages.push({
+  exerciseStore.messages.push({
     id: helpMessageId,
     role: 'assistant',
     content: 'Let me take a look at your code and help you out...',
@@ -59,40 +60,47 @@ async function handleGetHelp() {
 
   try {
     await getLLMHelp(
-      store.code,
-      store.exerciseDescription,
-      store.steps,
+      exerciseStore.code,
+      exerciseStore.exerciseDescription,
+      [],
       (chunk) => {
         accumulatedContent += chunk
-        const msg = store.messages.find((m) => m.id === helpMessageId)
+        const msg = exerciseStore.messages.find((m) => m.id === helpMessageId)
         if (msg) msg.content = accumulatedContent
       },
       (functionCall) => {
         if (functionCall.name === 'highlight_code') {
           const highlight = handleHighlightCode(functionCall.args)
-          store.codeHighlight = highlight
-          setTimeout(() => (store.codeHighlight = null), 5000)
+          exerciseStore.codeHighlight = highlight
+          setTimeout(() => (exerciseStore.codeHighlight = null), 5000)
         }
       },
       () => {
-        store.isStreaming = false
+        if (exerciseStore.exerciseId && accumulatedContent.trim()) {
+          saveAiInteraction(exerciseStore.exerciseId, {
+            promptType: 'get-help',
+            userMessage: null,
+            assistantMessage: accumulatedContent,
+          }).catch((e) => console.error('Failed to persist get-help interaction:', e))
+        }
+        exerciseStore.isStreaming = false
       },
       (error) => {
         console.error('Get help error:', error)
-        const msg = store.messages.find((m) => m.id === helpMessageId)
+        const msg = exerciseStore.messages.find((m) => m.id === helpMessageId)
         if (msg)
           msg.content = 'Sorry, I encountered an error while analyzing your code. Please try again.'
-        store.isStreaming = false
+        exerciseStore.isStreaming = false
       },
     )
   } catch (error) {
     console.error('Error getting help:', error)
-    store.isStreaming = false
+    exerciseStore.isStreaming = false
   }
 }
 
 async function handleSend() {
-  if (!input.value.trim() || store.isStreaming) return
+  if (!input.value.trim() || exerciseStore.isStreaming) return
 
   const userMessage = {
     id: Date.now(),
@@ -101,12 +109,12 @@ async function handleSend() {
     timestamp: new Date(),
   }
 
-  store.messages.push(userMessage)
+  exerciseStore.messages.push(userMessage)
   input.value = ''
-  store.isStreaming = true
+  exerciseStore.isStreaming = true
 
   const assistantMessageId = Date.now() + 1
-  store.messages.push({
+  exerciseStore.messages.push({
     id: assistantMessageId,
     role: 'assistant',
     content: '',
@@ -116,32 +124,39 @@ async function handleSend() {
   let accumulatedContent = ''
 
   try {
-    await streamChat([...store.messages.slice(0, -1)], store.code, {
+    await streamChat([...exerciseStore.messages.slice(0, -1)], exerciseStore.code, {
       onTextChunk: (chunk) => {
         accumulatedContent += chunk
-        const msg = store.messages.find((m) => m.id === assistantMessageId)
+        const msg = exerciseStore.messages.find((m) => m.id === assistantMessageId)
         if (msg) msg.content = accumulatedContent
       },
       onFunctionCall: (functionCall) => {
         if (functionCall.name === 'highlight_code') {
           const highlight = handleHighlightCode(functionCall.args)
-          store.codeHighlight = highlight
-          setTimeout(() => (store.codeHighlight = null), 5000)
+          exerciseStore.codeHighlight = highlight
+          setTimeout(() => (exerciseStore.codeHighlight = null), 5000)
         }
       },
       onComplete: () => {
-        store.isStreaming = false
+        if (exerciseStore.exerciseId && accumulatedContent.trim()) {
+          saveAiInteraction(exerciseStore.exerciseId, {
+            promptType: 'chat',
+            userMessage: userMessage.content,
+            assistantMessage: accumulatedContent,
+          }).catch((e) => console.error('Failed to persist chat interaction:', e))
+        }
+        exerciseStore.isStreaming = false
       },
       onError: (error) => {
         console.error('Chat error:', error)
-        const msg = store.messages.find((m) => m.id === assistantMessageId)
+        const msg = exerciseStore.messages.find((m) => m.id === assistantMessageId)
         if (msg) msg.content = 'Sorry, I encountered an error. Please try again.'
-        store.isStreaming = false
+        exerciseStore.isStreaming = false
       },
     })
   } catch (error) {
     console.error('Error sending message:', error)
-    store.isStreaming = false
+    exerciseStore.isStreaming = false
   }
 }
 
@@ -172,7 +187,7 @@ function handleKeyDown(e: KeyboardEvent) {
                   class="text-sm text-muted-foreground leading-relaxed whitespace-pre-line transition-all duration-300"
                   :class="{ 'line-clamp-6': !isExerciseExpanded && shouldShowToggle }"
                 >
-                  {{ store.exerciseDescription }}
+                  {{ exerciseStore.exerciseDescription }}
                 </p>
                 <Button
                   v-if="shouldShowToggle"
@@ -204,7 +219,7 @@ function handleKeyDown(e: KeyboardEvent) {
             </div>
             <Button
               size="sm"
-              :disabled="store.isStreaming"
+              :disabled="exerciseStore.isStreaming"
               class="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
               @click="handleGetHelp"
             >
@@ -216,7 +231,7 @@ function handleKeyDown(e: KeyboardEvent) {
         <!-- Messages -->
         <div class="flex flex-col gap-4 p-4">
           <div
-            v-for="message in store.messages"
+            v-for="message in exerciseStore.messages"
             :key="message.id"
             class="flex gap-3"
             :class="{ 'flex-row-reverse': message.role === 'user' }"
@@ -242,7 +257,8 @@ function handleKeyDown(e: KeyboardEvent) {
             >
               <p class="text-sm leading-relaxed whitespace-pre-wrap">
                 {{
-                  message.content || (message.role === 'assistant' && store.isStreaming ? '...' : '')
+                  message.content ||
+                  (message.role === 'assistant' && exerciseStore.isStreaming ? '...' : '')
                 }}
               </p>
             </div>

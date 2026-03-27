@@ -71,14 +71,10 @@ router.beforeEach(async (to) => {
     // correct flags even after a hard refresh (Pinia state is not persisted)
     let isTeacher = false
     try {
-      const { useAppStore } = await import('@/stores/app')
-      const store = useAppStore()
+      const { useAuthStore } = await import('@/stores/auth')
+      const authStore = useAuthStore()
       const profile = await getProfile()
-      store.isTeacher = profile.is_teacher
-      store.isAdmin = profile.is_admin
-      store.isSystemAdmin = profile.is_system_admin
-      store.userName = profile.name
-      store.organisationId = profile.organisation_id
+      authStore.applyProfile(profile)
       isTeacher = profile.is_teacher
     } catch {
       isTeacher = false
@@ -91,14 +87,10 @@ router.beforeEach(async (to) => {
     // correct flags even after a hard refresh (Pinia state is not persisted)
     let canAccess = false
     try {
-      const { useAppStore } = await import('@/stores/app')
-      const store = useAppStore()
+      const { useAuthStore } = await import('@/stores/auth')
+      const authStore = useAuthStore()
       const profile = await getProfile()
-      store.isTeacher = profile.is_teacher
-      store.isAdmin = profile.is_admin
-      store.isSystemAdmin = profile.is_system_admin
-      store.userName = profile.name
-      store.organisationId = profile.organisation_id
+      authStore.applyProfile(profile)
       // Both system admins and org-level admins can access the admin panel
       canAccess = profile.is_system_admin || profile.is_admin
     } catch {

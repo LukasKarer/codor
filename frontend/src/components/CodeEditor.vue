@@ -4,7 +4,7 @@ import { Play, Copy, Check } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
-import { useAppStore } from '@/stores/app'
+import { useExerciseStore } from '@/stores/exercise'
 import type { editor as MonacoEditorType } from 'monaco-editor'
 
 type LogEntry = {
@@ -12,7 +12,7 @@ type LogEntry = {
   content: string
 }
 
-const store = useAppStore()
+const exerciseStore = useExerciseStore()
 const copied = ref(false)
 const logs = ref<LogEntry[]>([])
 const workerRef = ref<Worker | null>(null)
@@ -20,7 +20,7 @@ const editorRef = shallowRef<MonacoEditorType.IStandaloneCodeEditor | null>(null
 const decorationsCollection = shallowRef<MonacoEditorType.IEditorDecorationsCollection | null>(null)
 
 function handleCopy() {
-  navigator.clipboard.writeText(store.code)
+  navigator.clipboard.writeText(exerciseStore.code)
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
 }
@@ -56,7 +56,7 @@ function handleRun() {
     logs.value.push({ type: 'error', content: `Worker Error: ${err.message}` })
   }
 
-  worker.postMessage(store.code)
+  worker.postMessage(exerciseStore.code)
 }
 
 function applyHighlight() {
@@ -67,7 +67,7 @@ function applyHighlight() {
     decorationsCollection.value = editor.createDecorationsCollection([])
   }
 
-  const highlight = store.codeHighlight
+  const highlight = exerciseStore.codeHighlight
   if (!highlight) {
     decorationsCollection.value.clear()
     return
@@ -101,7 +101,7 @@ function handleEditorMount(editor: MonacoEditorType.IStandaloneCodeEditor) {
 }
 
 // Watch for AI code highlight changes
-watch(() => store.codeHighlight, applyHighlight)
+watch(() => exerciseStore.codeHighlight, applyHighlight)
 
 onUnmounted(() => {
   if (workerRef.value) {
@@ -147,7 +147,7 @@ onUnmounted(() => {
             height="100%"
             language="javascript"
             theme="vs-dark"
-            :value="store.code"
+            :value="exerciseStore.code"
             :options="{
               minimap: { enabled: false },
               fontSize: 14,
@@ -155,7 +155,7 @@ onUnmounted(() => {
               scrollBeyondLastLine: false,
               automaticLayout: true,
             }"
-            @change="(val: string | undefined) => (store.code = val || '')"
+            @change="(val: string | undefined) => (exerciseStore.code = val || '')"
             @mount="handleEditorMount"
           />
         </div>

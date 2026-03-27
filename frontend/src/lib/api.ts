@@ -33,10 +33,69 @@ export interface UserInfo {
 
 export interface Participant {
   sub: string
+  name?: string | null
   content?: string | null
   is_test: boolean
   note?: number | null
   test_label?: string | null
+  ai_interactions_count?: number
+  snapshot_count?: number
+  time_spent_minutes?: number
+  has_report?: boolean
+  report_score?: number | null
+  report?: StudentReport | null
+}
+
+export interface AiConversation {
+  id: string
+  creation_time: number
+  prompt_type: string
+  user_message: string | null
+  assistant_message: string
+}
+
+export interface ScoreDeduction {
+  reason: string
+  points: number
+}
+
+export interface StudentReport {
+  id?: string
+  score?: number
+  creation_time?: number
+  summary: string
+  ai_interactions: string[]
+  score_deductions: ScoreDeduction[]
+  strengths: string[]
+  improvements: string[]
+  total_points_lost?: number
+}
+
+export interface ParticipantDetail extends Participant {
+  ai_interactions_count: number
+  snapshot_count: number
+  time_spent_minutes: number
+  conversations: AiConversation[]
+  report: (StudentReport & { score: number; creation_time: number }) | null
+}
+
+export interface ExerciseReport {
+  id?: string
+  creation_time?: number
+  overview: string
+  class_strengths: string[]
+  class_improvements: string[]
+  common_ai_topics: string[]
+  score_distribution: {
+    avg: number
+    min: number
+    max: number
+  }
+  per_student_highlights: Array<{
+    student_sub: string
+    score: number
+    highlight: string
+  }>
 }
 
 export interface AppConfig {
@@ -203,6 +262,41 @@ export async function getExerciseParticipant(
   userId: string,
 ): Promise<Participant> {
   return apiCall<Participant>(`/v1/exercise/${exerciseId}/participant/${userId}`)
+}
+
+export async function getExerciseParticipantDetail(
+  exerciseId: string,
+  userId: string,
+): Promise<ParticipantDetail> {
+  return apiCall<ParticipantDetail>(`/v1/exercise/${exerciseId}/participant/${userId}/detail`)
+}
+
+export async function saveAiInteraction(
+  exerciseId: string,
+  payload: {
+    promptType: string
+    userMessage?: string | null
+    assistantMessage: string
+  },
+): Promise<void> {
+  await apiCall(`/v1/exercise/${exerciseId}/ai-interaction`, 'POST', payload)
+}
+
+export async function generateStudentReport(
+  exerciseId: string,
+  userId: string,
+): Promise<StudentReport & { score: number; ai_interactions_count: number; time_spent_minutes: number }> {
+  return apiCall(`/v1/exercise/${exerciseId}/participant/${userId}/report`, 'POST')
+}
+
+export async function getExerciseReport(exerciseId: string): Promise<ExerciseReport | null> {
+  const data = await apiCall<{ report: ExerciseReport | null }>(`/v1/exercise/${exerciseId}/report`)
+  return data.report
+}
+
+export async function generateExerciseReport(exerciseId: string): Promise<ExerciseReport> {
+  const data = await apiCall<{ report: ExerciseReport }>(`/v1/exercise/${exerciseId}/report`, 'POST')
+  return data.report
 }
 
 /**
