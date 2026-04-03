@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { GoogleGenAI } from '@google/genai';
 import { supabase } from '../lib/supabase';
 import { strRandom } from '../lib/utils';
 import { requireAuth, requireTeacher } from '../middleware/auth';
+import { openRouterChatCompletion } from '../lib/openrouter';
 
 const router = Router();
 
@@ -20,24 +20,19 @@ interface StudentReportPayload {
   improvements: string[];
 }
 
-function getAI(): GoogleGenAI {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY is not set');
-  return new GoogleGenAI({ apiKey: key });
-}
-
 async function generateJsonWithAI<T>(prompt: string, fallback: T): Promise<T> {
   try {
-    const ai = getAI();
-    const result = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.4,
-      },
+    const result = await openRouterChatCompletion({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
     });
-    const text = result.text?.trim() ?? '';
+
+    const choices = result.choices as Array<Record<string, unknown>> | undefined;
+    const first = choices?.[0] as Record<string, unknown> | undefined;
+    const message = first?.message as Record<string, unknown> | undefined;
+    const text = (typeof message?.content === 'string' ? message.content : '').trim();
+
     if (!text) return fallback;
     return JSON.parse(text) as T;
   } catch {

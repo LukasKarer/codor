@@ -1,64 +1,67 @@
 import { Router, Request, Response } from 'express';
-import { GoogleGenAI, Type, FunctionCallingConfigMode } from '@google/genai';
+import { openRouterChatCompletion, streamOpenRouterChatCompletion } from '../lib/openrouter';
 
 const router = Router();
-
-function getAI(): GoogleGenAI {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY is not set');
-  return new GoogleGenAI({ apiKey: key });
-}
 
 // ─── Tool declarations (mirrored from frontend) ────────────────────────────
 
 const highlightCodeTool = {
-  name: 'highlight_code',
-  description: "Highlights a specific portion of code in the editor to draw the user's attention while explaining.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      start_line:   { type: Type.INTEGER, description: 'Starting line number (1-indexed).' },
-      start_column: { type: Type.INTEGER, description: 'Starting column number (1-indexed). Optional.' },
-      end_line:     { type: Type.INTEGER, description: 'Ending line number (1-indexed).' },
-      end_column:   { type: Type.INTEGER, description: 'Ending column number (1-indexed). Optional.' },
+  type: 'function' as const,
+  function: {
+    name: 'highlight_code',
+    description: "Highlights a specific portion of code in the editor to draw the user's attention while explaining.",
+    parameters: {
+      type: 'object',
+      properties: {
+        start_line: { type: 'integer', description: 'Starting line number (1-indexed).' },
+        start_column: { type: 'integer', description: 'Starting column number (1-indexed). Optional.' },
+        end_line: { type: 'integer', description: 'Ending line number (1-indexed).' },
+        end_column: { type: 'integer', description: 'Ending column number (1-indexed). Optional.' },
+      },
+      required: ['start_line', 'end_line'],
     },
-    required: ['start_line', 'end_line'],
   },
 };
 
 const generateTasksTool = {
-  name: 'generate_tasks',
-  description: 'Generates a list of educational tasks/steps based on the code.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      tasks: {
-        type: Type.ARRAY,
-        description: 'The list of tasks.',
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            description: { type: Type.STRING, description: 'Description of the task.' },
-            lineStart:   { type: Type.INTEGER, description: 'Start line number.' },
-            lineEnd:     { type: Type.INTEGER, description: 'End line number.' },
+  type: 'function' as const,
+  function: {
+    name: 'generate_tasks',
+    description: 'Generates a list of educational tasks/steps based on the code.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tasks: {
+          type: 'array',
+          description: 'The list of tasks.',
+          items: {
+            type: 'object',
+            properties: {
+              description: { type: 'string', description: 'Description of the task.' },
+              lineStart: { type: 'integer', description: 'Start line number.' },
+              lineEnd: { type: 'integer', description: 'End line number.' },
+            },
+            required: ['description', 'lineStart', 'lineEnd'],
           },
-          required: ['description', 'lineStart', 'lineEnd'],
         },
       },
+      required: ['tasks'],
     },
-    required: ['tasks'],
   },
 };
 
 const generateDescriptionTool = {
-  name: 'generate_description',
-  description: 'Generates a comprehensive project description based on the code.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      description: { type: Type.STRING, description: 'The generated project description.' },
+  type: 'function' as const,
+  function: {
+    name: 'generate_description',
+    description: 'Generates a comprehensive project description based on the code.',
+    parameters: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: 'The generated project description.' },
+      },
+      required: ['description'],
     },
-    required: ['description'],
   },
 };
 
@@ -86,6 +89,31 @@ function sendSSE(res: Response, event: string, data: unknown) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
+function extractToolCallArgs<T>(response: Record<string, unknown>, expectedToolName: string): T | null {
+  const choices = response.choices as Array<Record<string, unknown>> | undefined;
+  const first = choices?.[0] as Record<string, unknown> | undefined;
+  const message = first?.message as Record<string, unknown> | undefined;
+  const toolCalls = message?.tool_calls as Array<Record<string, unknown>> | undefined;
+
+  if (!toolCalls || toolCalls.length === 0) return null;
+
+  const call = toolCalls.find((tc) => {
+    const fn = tc.function as Record<string, unknown> | undefined;
+    return fn?.name === expectedToolName;
+  });
+
+  if (!call) return null;
+  const fn = call.function as Record<string, unknown> | undefined;
+  const argsText = fn?.arguments;
+  if (typeof argsText !== 'string') return null;
+
+  try {
+    return JSON.parse(argsText) as T;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Streaming chat ─────────────────────────────────────────────────────────
 
 /**
@@ -102,50 +130,33 @@ router.post('/ai/chat', async (req: Request, res: Response) => {
   initSSE(res);
 
   try {
-    const ai = getAI();
-
-    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
-
-    // Prepend system turn
-    contents.push({
-      role: 'user',
-      parts: [{ text: `${SYSTEM_PROMPT}\n\nCurrent code in the editor:\n\`\`\`javascript\n${currentCode}\n\`\`\`` }],
-    });
-    contents.push({
-      role: 'model',
-      parts: [{ text: 'I understand. I will help you learn programming by explaining concepts clearly and using the highlight_code tool to show specific parts of the code when discussing them.' }],
-    });
-
-    for (const msg of messages) {
-      contents.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
-      });
-    }
-
-    const stream = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash-lite',
-      contents,
-      config: {
-        tools: [{ functionDeclarations: [highlightCodeTool] }],
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
+    const chatMessages = [
+      {
+        role: 'system' as const,
+        content: `${SYSTEM_PROMPT}\n\nCurrent code in the editor:\n\`\`\`javascript\n${currentCode}\n\`\`\``,
       },
-    });
+      ...messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+    ];
 
-    for await (const chunk of stream) {
-      if (chunk.text) {
-        sendSSE(res, 'text', { text: chunk.text });
-      }
-      if (chunk.functionCalls && chunk.functionCalls.length > 0) {
-        for (const call of chunk.functionCalls) {
-          if (call.name && call.args) {
-            sendSSE(res, 'function_call', { name: call.name, args: call.args });
-          }
-        }
-      }
-    }
+    await streamOpenRouterChatCompletion(
+      {
+        messages: chatMessages,
+        tools: [highlightCodeTool],
+        temperature: 0.7,
+        top_p: 0.95,
+      },
+      {
+        onText: (text) => {
+          sendSSE(res, 'text', { text });
+        },
+        onFunctionCall: (name, args) => {
+          sendSSE(res, 'function_call', { name, args });
+        },
+      },
+    );
 
     sendSSE(res, 'done', {});
     res.end();
@@ -172,8 +183,6 @@ router.post('/ai/explain-step', async (req: Request, res: Response) => {
   initSSE(res);
 
   try {
-    const ai = getAI();
-
     const prompt = `You are a friendly programming tutor. A student is working on this exercise:
 
 "${exerciseDescription}"
@@ -184,33 +193,31 @@ ${code}
 \`\`\`
 
 The student clicked on this learning step to understand it better:
-"${step.description}" (lines ${step.lineStart}–${step.lineEnd})
+"${step.description}" (lines ${step.lineStart}-${step.lineEnd})
 
 Your job is to:
 1. IMMEDIATELY call the highlight_code tool to highlight lines ${step.lineStart} to ${step.lineEnd}
-2. Explain this step clearly and concisely — what the code at those lines does and why it matters
+2. Explain this step clearly and concisely - what the code at those lines does and why it matters
 3. Do NOT give away solutions or write code for the student
 4. Keep the explanation brief (2-4 sentences)
 
 Start by calling highlight_code, then give your explanation.`;
 
-    const stream = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        tools: [{ functionDeclarations: [highlightCodeTool] }],
+    await streamOpenRouterChatCompletion(
+      {
+        messages: [{ role: 'user', content: prompt }],
+        tools: [highlightCodeTool],
         temperature: 0.7,
       },
-    });
-
-    for await (const chunk of stream) {
-      if (chunk.text) sendSSE(res, 'text', { text: chunk.text });
-      if (chunk.functionCalls) {
-        for (const call of chunk.functionCalls) {
-          sendSSE(res, 'function_call', { name: call.name, args: call.args });
-        }
-      }
-    }
+      {
+        onText: (text) => {
+          sendSSE(res, 'text', { text });
+        },
+        onFunctionCall: (name, args) => {
+          sendSSE(res, 'function_call', { name, args });
+        },
+      },
+    );
 
     sendSSE(res, 'done', {});
     res.end();
@@ -237,8 +244,6 @@ router.post('/ai/get-help', async (req: Request, res: Response) => {
   initSSE(res);
 
   try {
-    const ai = getAI();
-
     const tasksContext = tasksOutline
       .map((task, idx) => `${idx + 1}. ${task.description} (Lines ${task.lineStart}-${task.lineEnd})`)
       .join('\n');
@@ -264,23 +269,21 @@ The student has clicked "Get Help". Your job is to:
 
 Provide your guidance now:`;
 
-    const stream = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        tools: [{ functionDeclarations: [highlightCodeTool] }],
+    await streamOpenRouterChatCompletion(
+      {
+        messages: [{ role: 'user', content: prompt }],
+        tools: [highlightCodeTool],
         temperature: 0.8,
       },
-    });
-
-    for await (const chunk of stream) {
-      if (chunk.text) sendSSE(res, 'text', { text: chunk.text });
-      if (chunk.functionCalls) {
-        for (const call of chunk.functionCalls) {
-          sendSSE(res, 'function_call', { name: call.name, args: call.args });
-        }
-      }
-    }
+      {
+        onText: (text) => {
+          sendSSE(res, 'text', { text });
+        },
+        onFunctionCall: (name, args) => {
+          sendSSE(res, 'function_call', { name, args });
+        },
+      },
+    );
 
     sendSSE(res, 'done', {});
     res.end();
@@ -301,8 +304,6 @@ router.post('/ai/generate-tasks', async (req: Request, res: Response) => {
   const { code, description } = req.body as { code: string; description: string };
 
   try {
-    const ai = getAI();
-
     const prompt = `You are an expert programming tutor.
 Your goal is to break down the provided code into a series of high-level, educational tasks or steps that a student would follow to build this code.
 
@@ -319,26 +320,17 @@ Description:
 ${description}
 `;
 
-    const result = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        tools: [{ functionDeclarations: [generateTasksTool] }],
-        toolConfig: {
-          functionCallingConfig: {
-            mode: FunctionCallingConfigMode.ANY,
-            allowedFunctionNames: ['generate_tasks'],
-          },
-        },
+    const result = await openRouterChatCompletion({
+      messages: [{ role: 'user', content: prompt }],
+      tools: [generateTasksTool],
+      tool_choice: {
+        type: 'function',
+        function: { name: 'generate_tasks' },
       },
     });
 
-    const calls = result.functionCalls;
-    if (calls && calls.length > 0 && calls[0].name === 'generate_tasks') {
-      res.json({ tasks: (calls[0].args as { tasks: unknown[] }).tasks });
-    } else {
-      res.json({ tasks: [] });
-    }
+    const args = extractToolCallArgs<{ tasks: unknown[] }>(result, 'generate_tasks');
+    res.json({ tasks: args?.tasks ?? [] });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
   }
@@ -355,8 +347,6 @@ router.post('/ai/generate-description', async (req: Request, res: Response) => {
   const { code } = req.body as { code: string };
 
   try {
-    const ai = getAI();
-
     const prompt = `You are an expert programming tutor.
 Your goal is to generate a comprehensive and educational description for the provided code.
 The description should explain what the code does. Do NOT include implementation details or step-by-step instructions.
@@ -367,26 +357,17 @@ ${code}
 Use the \`generate_description\` tool to return the result.
 `;
 
-    const result = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        tools: [{ functionDeclarations: [generateDescriptionTool] }],
-        toolConfig: {
-          functionCallingConfig: {
-            mode: FunctionCallingConfigMode.ANY,
-            allowedFunctionNames: ['generate_description'],
-          },
-        },
+    const result = await openRouterChatCompletion({
+      messages: [{ role: 'user', content: prompt }],
+      tools: [generateDescriptionTool],
+      tool_choice: {
+        type: 'function',
+        function: { name: 'generate_description' },
       },
     });
 
-    const calls = result.functionCalls;
-    if (calls && calls.length > 0 && calls[0].name === 'generate_description') {
-      res.json({ description: (calls[0].args as { description: string }).description });
-    } else {
-      res.json({ description: '' });
-    }
+    const args = extractToolCallArgs<{ description: string }>(result, 'generate_description');
+    res.json({ description: args?.description ?? '' });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
   }
