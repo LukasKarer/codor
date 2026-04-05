@@ -219,5 +219,48 @@ router.post('/user/:user_sub/note', requireAuth, async (req: Request<{ user_sub:
   res.json({ message: `Enrollment ${user_sub} noted` });
 });
 
+/**
+ * POST /v1/user/:user_sub/feedback
+ * Assigns written feedback to an enrollment row. Requires teacher role.
+ */
+router.post('/user/:user_sub/feedback', requireAuth, async (req: Request<{ user_sub: string }>, res: Response) => {
+  const user_sub = req.params.user_sub;
+  const authUser = req.authUser!;
+  const feedback = req.body?.feedback ?? null;
+
+  if (!authUser.isTeacher) {
+    res.status(403).json({ error: 'Forbidden: teacher access required' });
+    return;
+  }
+
+  const { data: existing, error: findError } = await supabase
+    .from('entries')
+    .select('id')
+    .eq('sub', user_sub)
+    .maybeSingle();
+
+  if (findError) {
+    res.status(500).json({ error: findError.message });
+    return;
+  }
+
+  if (!existing) {
+    res.status(404).json({ error: 'Enrollment not found' });
+    return;
+  }
+
+  const { error } = await supabase
+    .from('entries')
+    .update({ teacher_feedback: feedback !== null ? String(feedback) : null })
+    .eq('sub', user_sub);
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ message: `Feedback saved for ${user_sub}` });
+});
+
 export default router;
 

@@ -37,6 +37,7 @@ export interface Participant {
   content?: string | null
   is_test: boolean
   note?: number | null
+  teacher_feedback?: string | null
   test_label?: string | null
   ai_interactions_count?: number
   snapshot_count?: number
@@ -456,4 +457,8 @@ export async function updateProfile(
   },
 ): Promise<UserProfile> {
   return apiCall<UserProfile>(`/v1/admin/profile/${authUserId}/update`, 'POST', payload)
+}
+
+export async function saveTeacherFeedback(userSub: string, feedback: string): Promise<{ message: string }> {
+  return apiCall<{ message: string }>(`/v1/user/${userSub}/feedback`, 'POST', { feedback })
 }

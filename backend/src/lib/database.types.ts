@@ -96,6 +96,7 @@ export interface Database {
           content: string | null;
           auth_user_id: string | null;
           is_test: boolean;
+          teacher_feedback: string | null;
         };
         Insert: {
           id?: string;
@@ -106,6 +107,7 @@ export interface Database {
           content?: string | null;
           auth_user_id?: string | null;
           is_test?: boolean;
+          teacher_feedback?: string | null;
         };
         Update: {
           id?: string;
@@ -116,6 +118,7 @@ export interface Database {
           content?: string | null;
           auth_user_id?: string | null;
           is_test?: boolean;
+          teacher_feedback?: string | null;
         };
         Relationships: [
           {

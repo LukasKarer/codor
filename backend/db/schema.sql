@@ -131,6 +131,19 @@ CREATE TABLE IF NOT EXISTS entries (
 CREATE INDEX IF NOT EXISTS idx_entries_exercise_id  ON entries(exercise_id);
 CREATE INDEX IF NOT EXISTS idx_entries_auth_user_id ON entries(auth_user_id);
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'entries'
+      AND column_name  = 'teacher_feedback'
+  ) THEN
+    ALTER TABLE entries ADD COLUMN teacher_feedback TEXT DEFAULT NULL;
+  END IF;
+END;
+$$;
+
 -- ============================================================
 -- entry_snapshots table (autosave history)
 -- ============================================================

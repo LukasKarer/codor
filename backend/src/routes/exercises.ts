@@ -50,12 +50,23 @@ async function resolveExercise(exerciseSub: string): Promise<{ id: number; sub: 
 }
 
 async function resolveEntry(exerciseId: number, userSub: string) {
-  const { data } = await supabase
+  let { data, error } = await supabase
     .from('entries')
-    .select('id, sub, content, note, is_test, auth_user_id, creation_time')
+    .select('id, sub, content, note, is_test, auth_user_id, creation_time, teacher_feedback')
     .eq('exercise_id', exerciseId)
     .eq('sub', userSub)
     .maybeSingle();
+
+  if (error && (error.code === 'PGRST200' || error.code === '42703' || error.message.includes('teacher_feedback'))) {
+    const fallback = await supabase
+      .from('entries')
+      .select('id, sub, content, note, is_test, auth_user_id, creation_time')
+      .eq('exercise_id', exerciseId)
+      .eq('sub', userSub)
+      .maybeSingle();
+    data = fallback?.data as any;
+  }
+
   return data ?? null;
 }
 
@@ -381,6 +392,7 @@ router.get(
       content: user.content ?? null,
       is_test: user.is_test,
       note: user.note ?? null,
+      teacher_feedback: user.teacher_feedback ?? null,
       test_label: displayLabel,
       ai_interactions_count: stats.aiInteractionsCount,
       snapshot_count: stats.snapshotCount,
@@ -460,6 +472,7 @@ router.get(
       content: user.content ?? null,
       is_test: user.is_test,
       note: user.note ?? null,
+      teacher_feedback: user.teacher_feedback ?? null,
       test_label: displayLabel,
       ai_interactions_count: stats.aiInteractionsCount,
       snapshot_count: stats.snapshotCount,

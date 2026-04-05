@@ -18,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import TeacherFeedbackCard from '@/components/TeacherFeedbackCard.vue'
+import { toast } from 'vue-sonner'
 import {
   getExerciseInfo,
   getAllParticipantsWithDetails,
@@ -467,6 +469,11 @@ onMounted(async () => {
             </div>
 
             <template v-else>
+              <TeacherFeedbackCard 
+                :student-sub="selectedStudentData.studentId" 
+                :initial-feedback="selectedStudentDetail?.teacher_feedback || ''" 
+                @saved="(val) => { if (selectedStudentDetail) selectedStudentDetail.teacher_feedback = val }"
+              />
               <Card class="border-white/10 bg-[#09132b]/85">
                 <CardHeader>
                   <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
