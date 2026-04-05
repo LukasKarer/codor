@@ -45,6 +45,7 @@ interface StudentSubmission {
   aiInteractionsCount: number
   timeSpentMinutes: number
   hasReport: boolean
+  hasTeacherFeedback: boolean
 }
 
 interface Exercise {
@@ -130,6 +131,7 @@ const loadExercises = async () => {
             aiInteractionsCount: p.ai_interactions_count ?? 0,
             timeSpentMinutes: p.time_spent_minutes ?? 0,
             hasReport: p.has_report ?? false,
+            hasTeacherFeedback: !!p.teacher_feedback,
           }
         })
 
@@ -359,22 +361,31 @@ onMounted(async () => {
             @click="selectedStudent = selectedStudent === submission.studentId ? null : submission.studentId"
           >
             <CardHeader>
-              <div class="flex items-center justify-between gap-2">
-                <CardTitle class="text-base truncate flex items-center gap-1.5 text-slate-100">
+              <div class="flex items-start justify-between gap-2">
+                <CardTitle class="text-base truncate flex items-start gap-1.5 text-slate-100">
                   <FlaskConical
                     v-if="submission.isTest"
                     class="h-3.5 w-3.5 flex-shrink-0 text-orange-300"
                   />
                   {{ submission.studentName }}
                 </CardTitle>
-                <span
-                  :class="[
-                    'rounded-full border px-2 py-0.5 text-xs font-medium',
-                    getStatusColor(submission.status),
-                  ]"
-                >
-                  {{ submission.status.replace('-', ' ') }}
-                </span>
+                <div class="flex flex-col items-end gap-1">
+                  <span
+                    :class="[
+                      'rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+                      getStatusColor(submission.status),
+                    ]"
+                  >
+                    {{ submission.status.replace('-', ' ') }}
+                  </span>
+                  <span
+                    v-if="submission.hasTeacherFeedback"
+                    class="rounded-full border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400 whitespace-nowrap"
+                    title="Teacher feedback provided"
+                  >
+                    Feedback
+                  </span>
+                </div>
               </div>
             </CardHeader>
             <CardContent class="pt-0 space-y-2 text-slate-300">
