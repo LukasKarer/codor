@@ -1,12 +1,13 @@
 <div align="center">
-    <a href="https://github.com/mateocallec/gdg-linz"><img src="./docs/logo.svg?raw=true" alt="logo" height="217" /></a>
+    <a href="https://github.com/mateocallec/gdg-linz"><img src="./docs/codor_mascot.jpg?raw=true" alt="logo" height="217" /></a>
 </div>
 
 <hr />
 
-# Hagenberger Fünfeck - DevFest Linz 2025 Project
+# Codor
 
-Created by the **Hagenberger Fünfeck** group for the **Google Developer Group DevFest Linz 2025**.
+Created by the **Hagenberger Fünfeck** group for the **Google Developer Group DevFest Linz 2025**.,
+adapted by **Codor** Team as part of the 2026 Tartu Erasmus BIP
 
 <img src="./docs/dashboard.png?raw=true" alt="logo" height="512" />
 
@@ -29,13 +30,6 @@ This software is designed for teachers to upload exercises and for students to c
 ### 1. Clone the repository
 
 First, clone the project from GitHub and move into the project directory:
-
-```bash
-git clone https://github.com/mateocallec/gdg-linz.git
-cd gdg-linz
-```
-
----
 
 ### 2. Frontend setup
 
