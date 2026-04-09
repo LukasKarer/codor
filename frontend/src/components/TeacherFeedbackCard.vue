@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { User, Loader2, CheckCircle2 } from 'lucide-vue-next'
+import { User, Loader2, CheckCircle2, X } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -65,6 +65,17 @@ const handleSave = async () => {
         placeholder="Write your feedback here..."
         class="min-h-[100px] border-white/20 bg-black/20 focus-visible:ring-blue-500"
       />
+      <div class="flex gap-2">
+      <Button
+        variant="ghost"
+        :disabled="!feedback"
+        class="text-slate-400 hover:text-slate-200 hover:bg-white/10 px-3"
+        @click="feedback = ''"
+      >
+        <X class="h-4 w-4 mr-2" />
+        Clear
+      </Button>
+      <div class="flex-1" />
       <Button
         @click="handleSave"
         :disabled="isSaving || (!hasChanged && !isSaved)"
@@ -92,6 +103,7 @@ const handleSave = async () => {
           </span>
         </span>
       </Button>
+      </div>
     </CardContent>
   </Card>
 </template>
