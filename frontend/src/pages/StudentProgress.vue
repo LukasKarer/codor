@@ -190,6 +190,13 @@ const loadStudentDetail = async () => {
   }
 }
 
+const handleTeacherFeedbackSaved = (val: string) => {
+  if (selectedStudentDetail.value) selectedStudentDetail.value.teacher_feedback = val
+  const exercise = exercises.value.find((e) => e.id === selectedExercise.value)
+  const sub = exercise?.submissions.find((s) => s.studentId === selectedStudent.value)
+  if (sub) sub.hasTeacherFeedback = !!val
+}
+
 const generateSelectedStudentReport = async () => {
   if (!selectedExercise.value || !selectedStudent.value) return
 
@@ -480,10 +487,10 @@ onMounted(async () => {
             </div>
 
             <template v-else>
-              <TeacherFeedbackCard 
-                :student-sub="selectedStudentData.studentId" 
-                :initial-feedback="selectedStudentDetail?.teacher_feedback || ''" 
-                @saved="(val) => { if (selectedStudentDetail) selectedStudentDetail.teacher_feedback = val }"
+              <TeacherFeedbackCard
+                :student-sub="selectedStudentData.studentId"
+                :initial-feedback="selectedStudentDetail?.teacher_feedback || ''"
+                @saved="handleTeacherFeedbackSaved"
               />
               <Card class="border-white/10 bg-[#09132b]/85">
                 <CardHeader>
