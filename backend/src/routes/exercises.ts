@@ -212,7 +212,7 @@ router.post('/exercise/:exercise_sub/push', requireAuth, async (req: Request<{ e
 
   const { data: userRecord, error: userError } = await supabase
     .from('entries')
-    .select('id, sub')
+    .select('id, sub, submitted_at')
     .eq('auth_user_id', authUser.id)
     .eq('exercise_id', exercise.id)
     .order('creation_time', { ascending: false })
@@ -226,6 +226,11 @@ router.post('/exercise/:exercise_sub/push', requireAuth, async (req: Request<{ e
 
   if (!userRecord) {
     res.status(404).json({ error: 'No enrollment found for this user and exercise. Call /v1/users/new first.' });
+    return;
+  }
+
+  if (userRecord.submitted_at !== null) {
+    res.status(423).json({ error: 'Exercise is locked after submission' });
     return;
   }
 
@@ -253,6 +258,62 @@ router.post('/exercise/:exercise_sub/push', requireAuth, async (req: Request<{ e
 });
 
 /**
+ * POST /v1/exercise/:exercise_sub/submit
+ * Submits and locks the student's exercise entry. Idempotent — returns 409 if
+ * already submitted. Accepts the latest editor code in the request body so the
+ * very last unsaved state is captured.
+ */
+router.post('/exercise/:exercise_sub/submit', requireAuth, async (req: Request<{ exercise_sub: string }>, res: Response) => {
+  const exercise_sub = req.params.exercise_sub;
+  const authUser = req.authUser!;
+
+  const exercise = await resolveExercise(exercise_sub);
+  if (!exercise) {
+    res.status(404).json({ error: 'Exercise not found' });
+    return;
+  }
+
+  const { data: userRecord, error: userError } = await supabase
+    .from('entries')
+    .select('id, sub, submitted_at, content')
+    .eq('auth_user_id', authUser.id)
+    .eq('exercise_id', exercise.id)
+    .order('creation_time', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (userError) {
+    res.status(500).json({ error: userError.message });
+    return;
+  }
+
+  if (!userRecord) {
+    res.status(404).json({ error: 'No enrollment found for this user and exercise.' });
+    return;
+  }
+
+  if (userRecord.submitted_at !== null) {
+    res.status(409).json({ error: 'Already submitted' });
+    return;
+  }
+
+  const submittedAt = Math.floor(Date.now() / 1000);
+  const finalCode: string = req.body?.content ?? userRecord.content ?? '';
+
+  const { error: updateError } = await supabase
+    .from('entries')
+    .update({ submitted_at: submittedAt, submitted_content: finalCode })
+    .eq('id', userRecord.id);
+
+  if (updateError) {
+    res.status(500).json({ error: updateError.message });
+    return;
+  }
+
+  res.json({ submitted_at: submittedAt });
+});
+
+/**
  * POST /v1/exercise/:exercise_sub/ai-interaction
  * Persists one AI interaction for the authenticated participant.
  */
@@ -276,7 +337,7 @@ router.post('/exercise/:exercise_sub/ai-interaction', requireAuth, async (req: R
 
   const { data: userRecord, error: userError } = await supabase
     .from('entries')
-    .select('id')
+    .select('id, submitted_at')
     .eq('auth_user_id', authUser.id)
     .eq('exercise_id', exercise.id)
     .order('creation_time', { ascending: false })
@@ -290,6 +351,11 @@ router.post('/exercise/:exercise_sub/ai-interaction', requireAuth, async (req: R
 
   if (!userRecord) {
     res.status(404).json({ error: 'No enrollment found for this user and exercise.' });
+    return;
+  }
+
+  if (userRecord.submitted_at !== null) {
+    res.status(423).json({ error: 'Exercise is locked after submission' });
     return;
   }
 

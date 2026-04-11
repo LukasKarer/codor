@@ -60,7 +60,7 @@ router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
   if (!is_test) {
     const { data: existing } = await supabase
       .from('entries')
-      .select('sub, creation_time, content')
+      .select('sub, creation_time, content, submitted_at')
       .eq('auth_user_id', authUser.id)
       .eq('exercise_id', exercise.id)
       .eq('is_test', false)
@@ -73,6 +73,7 @@ router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
         creation_time: existing.creation_time,
         is_test: false,
         saved_content: existing.content ?? null,
+        submitted_at: existing.submitted_at ?? null,
       });
       return;
     }
@@ -101,8 +102,8 @@ router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
-  // Brand-new enrollment — no saved content yet
-  res.json({ sub, exercise_sub, creation_time, is_test, saved_content: null });
+  // Brand-new enrollment — no saved content yet, not submitted
+  res.json({ sub, exercise_sub, creation_time, is_test, saved_content: null, submitted_at: null });
 });
 
 /**

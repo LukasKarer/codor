@@ -17,10 +17,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import ExamSettingsCard from '@/components/ExamSettings.vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { generateTasks, generateDescription } from '@/lib/ai'
 import type { Step as AIStep } from '@/lib/ai'
 import { createExercise, serializeExerciseContent } from '@/lib/api'
+import type { ExamSettings } from '@/lib/api'
 import { toast } from 'vue-sonner'
 import type { editor as MonacoEditorType } from 'monaco-editor'
 
@@ -58,6 +60,9 @@ const steps = ref<Step[]>([])
 const selectedStep = ref<number | null>(null)
 const hoveredStep = ref<number | null>(null)
 const editingStep = ref<number | null>(null)
+
+// Exam settings — managed by ExamSettingsCard component
+const examSettings = ref<ExamSettings | null>(null)
 
 const editorRef = shallowRef<MonacoEditorType.IStandaloneCodeEditor | null>(null)
 const decorationsCollection = shallowRef<MonacoEditorType.IEditorDecorationsCollection | null>(null)
@@ -253,6 +258,7 @@ const handleSubmit = async () => {
         lineStart,
         lineEnd,
       })),
+      examSettings: examSettings.value ?? undefined,
     })
 
     const exercise = await createExercise(content)
@@ -394,6 +400,9 @@ const handleSubmit = async () => {
             />
           </CardContent>
         </Card>
+
+        <!-- Exam Settings -->
+        <ExamSettingsCard v-model="examSettings" />
 
         <!-- Steps -->
         <Card>
