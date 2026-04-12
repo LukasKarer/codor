@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Message, CodeHighlight } from '@/lib/ai'
+import type { ExamSettings } from '@/lib/api'
 
 export type { Message, CodeHighlight }
 
@@ -43,6 +44,10 @@ export const useExerciseStore = defineStore('exercise', () => {
   const exerciseId = ref<string | null>(null)
   const userId = ref<string | null>(null)
   const pushIntervalMs = ref(30000)
+  const examSettings = ref<ExamSettings | null>(null)
+  const isExerciseLocked = ref(false)
+  const submittedAt = ref<number | null>(null)
+  const entryCreationTime = ref<number | null>(null)
 
   return {
     code,
@@ -53,5 +58,9 @@ export const useExerciseStore = defineStore('exercise', () => {
     exerciseId,
     userId,
     pushIntervalMs,
+    examSettings,
+    isExerciseLocked,
+    submittedAt,
+    entryCreationTime,
   }
 })

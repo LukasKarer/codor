@@ -118,19 +118,22 @@ CREATE TABLE IF NOT EXISTS exercises (
 -- entries table (enrollment log)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS entries (
-  id            uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
-  sub           TEXT    NOT NULL UNIQUE,
-  exercise_id   BIGINT  NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
-  creation_time BIGINT  NOT NULL,
-  auth_user_id  uuid    REFERENCES auth.users(id) ON DELETE SET NULL,
-  is_test       boolean NOT NULL DEFAULT false,
-  note          INT     DEFAULT NULL,
-  content       TEXT    DEFAULT NULL
+  id                uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+  sub               TEXT    NOT NULL UNIQUE,
+  exercise_id       BIGINT  NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+  creation_time     BIGINT  NOT NULL,
+  auth_user_id      uuid    REFERENCES auth.users(id) ON DELETE SET NULL,
+  is_test           boolean NOT NULL DEFAULT false,
+  note              INT     DEFAULT NULL,
+  content           TEXT    DEFAULT NULL,
+  submitted_at      BIGINT  DEFAULT NULL,
+  submitted_content TEXT    DEFAULT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_entries_exercise_id  ON entries(exercise_id);
 CREATE INDEX IF NOT EXISTS idx_entries_auth_user_id ON entries(auth_user_id);
 
+-- Add columns that may be missing on an existing DB
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -140,6 +143,18 @@ BEGIN
       AND column_name  = 'teacher_feedback'
   ) THEN
     ALTER TABLE entries ADD COLUMN teacher_feedback TEXT DEFAULT NULL;
+      AND column_name  = 'submitted_at'
+  ) THEN
+    ALTER TABLE entries ADD COLUMN submitted_at BIGINT DEFAULT NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'entries'
+      AND column_name  = 'submitted_content'
+  ) THEN
+    ALTER TABLE entries ADD COLUMN submitted_content TEXT DEFAULT NULL;
   END IF;
 END;
 $$;

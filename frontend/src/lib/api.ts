@@ -12,6 +12,12 @@ export interface ExerciseInfo extends Exercise {
   content: string
 }
 
+export interface ExamSettings {
+  timeLimitMinutes?: number | null
+  submitAndLock?: boolean
+  aiChatMode?: 'enabled' | 'restricted' | 'disabled'
+}
+
 export interface User {
   sub: string
   exercise_sub: string
@@ -19,6 +25,8 @@ export interface User {
   is_test: boolean
   /** Previously saved code for this enrollment, null on first visit */
   saved_content: string | null
+  /** Unix timestamp (seconds) when the student submitted; null if not yet submitted */
+  submitted_at: number | null
 }
 
 export interface UserInfo {
@@ -353,6 +361,7 @@ export function serializeExerciseContent(data: {
     lineStart: number
     lineEnd: number
   }>
+  examSettings?: ExamSettings
 }): string {
   return JSON.stringify(data)
 }
@@ -366,8 +375,24 @@ export function parseExerciseContent(content: string): {
     lineStart: number
     lineEnd: number
   }>
+  examSettings?: ExamSettings
 } {
   return JSON.parse(content)
+}
+
+/**
+ * POST /v1/exercise/:exercise_sub/submit
+ * Submits the student's exercise and locks further edits.
+ */
+export async function submitExercise(
+  exerciseId: string,
+  content: string,
+): Promise<{ submitted_at: number }> {
+  return apiCall<{ submitted_at: number }>(
+    `/v1/exercise/${exerciseId}/submit`,
+    'POST',
+    { content },
+  )
 }
 
 export async function getAllParticipantsWithDetails(exerciseId: string): Promise<Participant[]> {

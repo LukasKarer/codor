@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { Send, Bot, User, HelpCircle, BookOpen, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,8 +8,22 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useExerciseStore } from '@/stores/exercise'
 import { streamChat, handleHighlightCode, getLLMHelp } from '@/lib/ai'
 import { saveAiInteraction } from '@/lib/api'
+import { AI_MODE_ENABLED, AI_MODE_DISABLED, EXAM_STRINGS } from '@/components/exam/constants'
+
+const props = defineProps<{
+  aiChatMode?: 'enabled' | 'restricted' | 'disabled'
+  locked?: boolean
+}>()
 
 const exerciseStore = useExerciseStore()
+
+const effectiveAiMode = computed<'enabled' | 'restricted' | 'disabled'>(
+  () => props.locked ? AI_MODE_DISABLED : (props.aiChatMode ?? AI_MODE_ENABLED),
+)
+const isChatInputDisabled = computed(() => effectiveAiMode.value !== AI_MODE_ENABLED)
+const isGetHelpDisabled = computed(
+  () => effectiveAiMode.value === AI_MODE_DISABLED || exerciseStore.isStreaming,
+)
 const input = ref('')
 const isExerciseExpanded = ref(false)
 const shouldShowToggle = ref(false)
@@ -45,7 +59,7 @@ watch(
 )
 
 async function handleGetHelp() {
-  if (exerciseStore.isStreaming) return
+  if (isGetHelpDisabled.value) return
 
   exerciseStore.isStreaming = true
   const helpMessageId = Date.now()
@@ -100,7 +114,7 @@ async function handleGetHelp() {
 }
 
 async function handleSend() {
-  if (!input.value.trim() || exerciseStore.isStreaming) return
+  if (!input.value.trim() || exerciseStore.isStreaming || isChatInputDisabled.value) return
 
   const userMessage = {
     id: Date.now(),
@@ -219,7 +233,7 @@ function handleKeyDown(e: KeyboardEvent) {
             </div>
             <Button
               size="sm"
-              :disabled="exerciseStore.isStreaming"
+              :disabled="isGetHelpDisabled"
               class="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
               @click="handleGetHelp"
             >
@@ -269,25 +283,35 @@ function handleKeyDown(e: KeyboardEvent) {
 
     <!-- Input Area -->
     <div class="border-t border-border p-4">
-      <div class="flex items-center gap-2">
-        <Input
-          v-model="input"
-          placeholder="Ask your tutor a question..."
-          class="flex-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
-          @keydown="handleKeyDown"
-        />
-        <Button
-          size="icon"
-          class="h-10 w-10 bg-gradient-to-br from-purple-600 to-blue-500 text-white hover:from-purple-700 hover:to-blue-600 border-0"
-          :disabled="!input.trim()"
-          @click="handleSend"
-        >
-          <Send class="h-4 w-4" />
-        </Button>
-      </div>
-      <p class="mt-2 text-center text-xs text-muted-foreground">
-        Press Enter to send • Shift+Enter for new line
+      <!-- AI fully disabled: no chat, no input -->
+      <p v-if="effectiveAiMode === AI_MODE_DISABLED" class="text-center text-sm text-muted-foreground py-2">
+        {{ props.locked ? EXAM_STRINGS.chatDisabledSubmitted : EXAM_STRINGS.chatDisabledExam }}
       </p>
+
+      <!-- Chat available (enabled or restricted) -->
+      <template v-else>
+        <div class="flex items-center gap-2">
+          <Input
+            v-model="input"
+            placeholder="Ask your tutor a question..."
+            :disabled="isChatInputDisabled"
+            class="flex-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
+            @keydown="handleKeyDown"
+          />
+          <Button
+            size="icon"
+            class="h-10 w-10 bg-gradient-to-br from-purple-600 to-blue-500 text-white hover:from-purple-700 hover:to-blue-600 border-0"
+            :disabled="!input.trim() || isChatInputDisabled"
+            @click="handleSend"
+          >
+            <Send class="h-4 w-4" />
+          </Button>
+        </div>
+        <p class="mt-2 text-center text-xs text-muted-foreground">
+          <span v-if="isChatInputDisabled">{{ EXAM_STRINGS.chatRestrictedHint }}</span>
+          <span v-else>Press Enter to send • Shift+Enter for new line</span>
+        </p>
+      </template>
     </div>
   </div>
 </template>

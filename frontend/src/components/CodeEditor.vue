@@ -12,6 +12,10 @@ type LogEntry = {
   content: string
 }
 
+const props = defineProps<{
+  readonly?: boolean
+}>()
+
 const exerciseStore = useExerciseStore()
 const copied = ref(false)
 const logs = ref<LogEntry[]>([])
@@ -131,6 +135,7 @@ onUnmounted(() => {
         <Button
           size="sm"
           class="h-8 gap-1.5 text-primary-foreground bg-gradient-to-br from-purple-600 to-blue-500"
+          :disabled="props.readonly"
           @click="handleRun"
         >
           <Play class="h-4 w-4" />
@@ -154,8 +159,9 @@ onUnmounted(() => {
               lineNumbers: 'on',
               scrollBeyondLastLine: false,
               automaticLayout: true,
+              readOnly: props.readonly ?? false,
             }"
-            @change="(val: string | undefined) => (exerciseStore.code = val || '')"
+            @change="(val: string | undefined) => { if (!props.readonly) exerciseStore.code = val || '' }"
             @mount="handleEditorMount"
           />
         </div>
