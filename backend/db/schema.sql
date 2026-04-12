@@ -143,6 +143,12 @@ BEGIN
       AND column_name  = 'teacher_feedback'
   ) THEN
     ALTER TABLE entries ADD COLUMN teacher_feedback TEXT DEFAULT NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'entries'
       AND column_name  = 'submitted_at'
   ) THEN
     ALTER TABLE entries ADD COLUMN submitted_at BIGINT DEFAULT NULL;
