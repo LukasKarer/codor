@@ -11,20 +11,37 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 
-const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+const rawAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);
 
+function normalizeOrigin(origin: string): string {
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return origin.replace(/\/+$/, '');
+  }
+}
+
+const allowAllOrigins = rawAllowedOrigins.length === 0 || rawAllowedOrigins.includes('*');
+const allowedOrigins = new Set(rawAllowedOrigins.map(normalizeOrigin));
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (!origin || allowAllOrigins) {
       callback(null, true);
       return;
     }
 
-    callback(new Error('Not allowed by CORS'));
+    if (allowedOrigins.has(normalizeOrigin(origin))) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`Not allowed by CORS: ${origin}`));
   },
+  credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
