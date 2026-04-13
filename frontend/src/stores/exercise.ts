@@ -47,6 +47,20 @@ export const useExerciseStore = defineStore('exercise', () => {
   const examSettings = ref<ExamSettings | null>(null)
   const isExerciseLocked = ref(false)
   const submittedAt = ref<number | null>(null)
+  const isFinished = ref(false)
+
+  function resetForExerciseSwitch() {
+    codeHighlight.value = null
+    isStreaming.value = false
+    messages.value = initialMessages.map((msg) => ({
+      ...msg,
+      timestamp: new Date(msg.timestamp),
+    }))
+    isExerciseLocked.value = false
+    submittedAt.value = null
+    isFinished.value = false
+    entryCreationTime.value = null
+  }
   const entryCreationTime = ref<number | null>(null)
 
   return {
@@ -62,5 +76,7 @@ export const useExerciseStore = defineStore('exercise', () => {
     isExerciseLocked,
     submittedAt,
     entryCreationTime,
+    isFinished,
+    resetForExerciseSwitch,
   }
 })

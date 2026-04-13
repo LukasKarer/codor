@@ -27,6 +27,21 @@ export interface User {
   saved_content: string | null
   /** Unix timestamp (seconds) when the student submitted; null if not yet submitted */
   submitted_at: number | null
+  /** True when student clicked Finish; waiting for teacher grading lock */
+  is_finished: boolean
+}
+
+export interface StudentDashboardExercise {
+  entry_sub: string
+  exercise_sub: string | null
+  title: string
+  is_completed: boolean
+  is_locked: boolean
+  has_saved_content: boolean
+  score: number | null
+  teacher_feedback: string | null
+  creation_time: number
+  submitted_at: number | null
 }
 
 export interface UserInfo {
@@ -333,6 +348,10 @@ export async function enrollUser(exerciseId: string, isTest: boolean = false): P
   )
 }
 
+export async function getStudentDashboard(): Promise<{ exercises: StudentDashboardExercise[] }> {
+  return apiCall<{ exercises: StudentDashboardExercise[] }>('/v1/student/dashboard')
+}
+
 export async function getUserInfo(userId: string): Promise<UserInfo> {
   return apiCall<UserInfo>(`/v1/user/${userId}/info`)
 }
@@ -387,8 +406,8 @@ export function parseExerciseContent(content: string): {
 export async function submitExercise(
   exerciseId: string,
   content: string,
-): Promise<{ submitted_at: number }> {
-  return apiCall<{ submitted_at: number }>(
+): Promise<{ submitted_at: number | null; is_finished?: boolean }> {
+  return apiCall<{ submitted_at: number | null; is_finished?: boolean }>(
     `/v1/exercise/${exerciseId}/submit`,
     'POST',
     { content },
