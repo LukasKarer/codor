@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { requireSystemAdmin, requireAuth } from '../middleware/auth';
-import type { Json } from '../lib/database.types';
+import type { Database, Json } from '../lib/database.types';
 
 const router = Router();
 
@@ -10,6 +10,7 @@ const router = Router();
 // ============================================================
 const ORG_SELECT = 'id, name, admins, email_patterns, data';
 const PROFILE_SELECT = 'auth_user_id, name, is_teacher, is_admin, is_system_admin, organisation_id';
+type OrganisationUpdate = Database['public']['Tables']['organisations']['Update'];
 
 // ============================================================
 // GET /v1/organisations/public
@@ -180,14 +181,14 @@ router.post(
       }
     }
 
-    const updates: Record<string, unknown> = {};
+    const updates: OrganisationUpdate = {};
     // Both levels can update name, data, and email_patterns
-    if (req.body?.name !== undefined) updates['name'] = req.body.name;
-    if (req.body?.data !== undefined) updates['data'] = req.body.data;
-    if (req.body?.email_patterns !== undefined) updates['email_patterns'] = req.body.email_patterns;
+    if (req.body?.name !== undefined) updates.name = req.body.name;
+    if (req.body?.data !== undefined) updates.data = req.body.data as Record<string, Json>;
+    if (req.body?.email_patterns !== undefined) updates.email_patterns = req.body.email_patterns;
     // Only system admins can update the admins list
     if (authUser.isSystemAdmin) {
-      if (req.body?.admins !== undefined) updates['admins'] = req.body.admins;
+      if (req.body?.admins !== undefined) updates.admins = req.body.admins;
     }
 
     const { data: updated, error } = await supabase
