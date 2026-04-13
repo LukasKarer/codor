@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    restart: unless-stopped
+    networks:
+      - coolify
+      - internal
+    labels:
+      # Traefik labels (Coolify default)
+      - traefik.enable=true
+      - traefik.docker.network=${COOLIFY_NETWORK:-coolify}
+      - traefik.http.routers.codor-frontend.rule=Host(`${FRONTEND_DOMAIN}`)
+      - traefik.http.routers.codor-frontend.entrypoints=websecure
+      - traefik.http.routers.codor-frontend.tls=true
+      - traefik.http.services.codor-frontend.loadbalancer.server.port=80
+
+      # Caddy labels (for Caddy Docker Proxy users)
+      - caddy=${FRONTEND_DOMAIN}
+      - caddy.reverse_proxy={{upstreams 80}}
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL}
+      OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME}
+      PUSH_INTERVAL_MS: ${PUSH_INTERVAL_MS:-30000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW_MIN: ${RATE_LIMIT_WINDOW_MIN:-1}
+    networks:
+      - coolify
+      - internal
+    labels:
+      # Traefik labels (Coolify default)
+      - traefik.enable=true
+      - traefik.docker.network=${COOLIFY_NETWORK:-coolify}
+      - traefik.http.routers.codor-backend.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.codor-backend.entrypoints=websecure
+      - traefik.http.routers.codor-backend.tls=true
+      - traefik.http.services.codor-backend.loadbalancer.server.port=3000
+
+      # Caddy labels (for Caddy Docker Proxy users)
+      - caddy=${API_DOMAIN}
+      - caddy.reverse_proxy={{upstreams 3000}}
+
+networks:
+  internal:
+    driver: bridge
+  coolify:
+    external: true
+    name: ${COOLIFY_NETWORK:-coolify}

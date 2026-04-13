@@ -92,6 +92,8 @@ export interface Database {
           sub: string;
           exercise_id: number;
           creation_time: number;
+          submitted_at: number | null;
+          submitted_content: string | null;
           note: number | null;
           content: string | null;
           auth_user_id: string | null;
@@ -103,6 +105,8 @@ export interface Database {
           sub: string;
           exercise_id: number;
           creation_time: number;
+          submitted_at?: number | null;
+          submitted_content?: string | null;
           note?: number | null;
           content?: string | null;
           auth_user_id?: string | null;
@@ -114,6 +118,8 @@ export interface Database {
           sub?: string;
           exercise_id?: number;
           creation_time?: number;
+          submitted_at?: number | null;
+          submitted_content?: string | null;
           note?: number | null;
           content?: string | null;
           auth_user_id?: string | null;
