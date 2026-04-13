@@ -181,7 +181,7 @@ router.post(
       }
     }
 
-    const updates: OrganisationUpdate = {};
+    const updates: Database['public']['Tables']['organisations']['Update'] = {};
     // Both levels can update name, data, and email_patterns
     if (req.body?.name !== undefined) updates.name = req.body.name;
     if (req.body?.data !== undefined) updates.data = req.body.data as Record<string, Json>;
