@@ -17,13 +17,13 @@ services:
       # Traefik labels (Coolify default)
       - traefik.enable=true
       - traefik.docker.network=${COOLIFY_NETWORK:-coolify}
-      - traefik.http.routers.codor-frontend.rule=Host(`${FRONTEND_DOMAIN}`)
+      - traefik.http.routers.codor-frontend.rule=Host(`${FRONTEND_DOMAIN:?set FRONTEND_DOMAIN in .env}`)
       - traefik.http.routers.codor-frontend.entrypoints=websecure
       - traefik.http.routers.codor-frontend.tls=true
       - traefik.http.services.codor-frontend.loadbalancer.server.port=80
 
       # Caddy labels (for Caddy Docker Proxy users)
-      - caddy=${FRONTEND_DOMAIN}
+      - caddy=${FRONTEND_DOMAIN:?set FRONTEND_DOMAIN in .env}
       - caddy.reverse_proxy={{upstreams 80}}
 
   backend:
@@ -43,6 +43,7 @@ services:
       PUSH_INTERVAL_MS: ${PUSH_INTERVAL_MS:-30000}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
       RATE_LIMIT_WINDOW_MIN: ${RATE_LIMIT_WINDOW_MIN:-1}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     networks:
       - coolify
       - internal
@@ -50,13 +51,13 @@ services:
       # Traefik labels (Coolify default)
       - traefik.enable=true
       - traefik.docker.network=${COOLIFY_NETWORK:-coolify}
-      - traefik.http.routers.codor-backend.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.codor-backend.rule=Host(`${API_DOMAIN:?set API_DOMAIN in .env}`)
       - traefik.http.routers.codor-backend.entrypoints=websecure
       - traefik.http.routers.codor-backend.tls=true
       - traefik.http.services.codor-backend.loadbalancer.server.port=3000
 
       # Caddy labels (for Caddy Docker Proxy users)
-      - caddy=${API_DOMAIN}
+      - caddy=${API_DOMAIN:?set API_DOMAIN in .env}
       - caddy.reverse_proxy={{upstreams 3000}}
 
 networks:

@@ -27,6 +27,31 @@ This software is designed for teachers to upload exercises and for students to c
 
 ## Getting Started
 
+### Docker deployment (single source of truth)
+
+The repository root has a `docker-compose.yaml` that defines frontend + backend and reverse-proxy labels in one place.
+
+1. Copy env template and fill values:
+
+```bash
+cp .env.example .env
+```
+
+2. Set at minimum:
+
+- `API_DOMAIN` (e.g. `api.codor.karer.tech`)
+- `FRONTEND_DOMAIN` (e.g. `app.codor.karer.tech`)
+- `CORS_ALLOWED_ORIGINS` (comma-separated, e.g. `https://app.codor.karer.tech,http://localhost:8080`)
+- Supabase/OpenRouter credentials
+
+3. Deploy from repository root:
+
+```bash
+docker compose up -d --build
+```
+
+Important: the compose file now fails fast if `API_DOMAIN` or `FRONTEND_DOMAIN` is missing, so unresolved placeholders like `${API_DOMAIN}` are not silently passed to Caddy labels.
+
 ### 1. Clone the repository
 
 First, clone the project from GitHub and move into the project directory:
