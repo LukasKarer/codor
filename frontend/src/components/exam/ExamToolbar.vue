@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Clock, Lock, Send, Loader2 } from 'lucide-vue-next'
+import { Clock, Lock, Send, Loader2, CheckCircle2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { EXAM_STRINGS } from './constants'
 
@@ -10,6 +10,7 @@ const props = defineProps<{
   showSubmitButton: boolean
   isSubmitting: boolean
   isLocked: boolean
+  isFinished: boolean
 }>()
 
 const emit = defineEmits<{ submitClicked: [] }>()
@@ -46,15 +47,23 @@ const formattedTime = computed(() => {
     <!-- Submit button -->
     <Button
       v-if="showSubmitButton"
-      variant="destructive"
+      variant="default"
       size="sm"
-      :disabled="isSubmitting"
+      :disabled="isSubmitting || isFinished"
       @click="emit('submitClicked')"
     >
       <Loader2 v-if="isSubmitting" class="mr-1.5 h-4 w-4 animate-spin" />
       <Send v-else class="mr-1.5 h-4 w-4" />
       {{ EXAM_STRINGS.submitButton }}
     </Button>
+
+    <div
+      v-if="isFinished && !isLocked"
+      class="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+    >
+      <CheckCircle2 class="h-3.5 w-3.5" />
+      {{ EXAM_STRINGS.finishedBadge }}
+    </div>
 
     <!-- Locked badge -->
     <div

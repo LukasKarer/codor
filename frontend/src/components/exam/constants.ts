@@ -13,21 +13,22 @@ export const AI_MODE_DISABLED = 'disabled' as const
 
 // UI strings
 export const EXAM_STRINGS = {
-  submitButton: 'Submit Exercise',
+  submitButton: 'Finish Exercise',
+  finishedBadge: 'Finished - awaiting grading',
   lockedBadge: 'Submitted — read only',
 
   confirmDialog: {
-    title: 'Submit Exercise?',
+    title: 'Finish Exercise?',
     description:
-      'Once submitted, you cannot make further changes. Your current code will be saved as your final answer.',
+      'Your current code will be marked as finished and sent for teacher review. You can still edit until grading locks it.',
     cancelLabel: 'Cancel',
-    confirmLabel: 'Yes, Submit',
+    confirmLabel: 'Yes, Finish',
   },
 
   timesUpDialog: {
     title: "Time's Up!",
     description:
-      'Your code has been automatically submitted. The exercise is now locked.',
+      'Your code was marked as finished automatically and sent for teacher review.',
     closeLabel: 'OK',
   },
 

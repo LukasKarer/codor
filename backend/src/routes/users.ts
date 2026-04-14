@@ -5,6 +5,19 @@ import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
+function tryExtractExerciseTitle(content: string | null): string {
+  if (!content) return 'Untitled Exercise';
+  try {
+    const parsed = JSON.parse(content) as { title?: unknown };
+    if (typeof parsed.title === 'string' && parsed.title.trim()) {
+      return parsed.title.trim();
+    }
+  } catch {
+    // ignore invalid JSON and use fallback title
+  }
+  return 'Untitled Exercise';
+}
+
 /**
  * POST /v1/users/new
  * Enrolls the authenticated user into an exercise (or returns their existing
@@ -60,7 +73,7 @@ router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
   if (!is_test) {
     const { data: existing } = await supabase
       .from('entries')
-      .select('sub, creation_time, content, submitted_at')
+      .select('sub, creation_time, content, submitted_at, submitted_content')
       .eq('auth_user_id', authUser.id)
       .eq('exercise_id', exercise.id)
       .eq('is_test', false)
@@ -74,6 +87,7 @@ router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
         is_test: false,
         saved_content: existing.content ?? null,
         submitted_at: existing.submitted_at ?? null,
+        is_finished: existing.submitted_content !== null,
       });
       return;
     }
@@ -103,7 +117,87 @@ router.post('/users/new', requireAuth, async (req: Request, res: Response) => {
   }
 
   // Brand-new enrollment — no saved content yet, not submitted
-  res.json({ sub, exercise_sub, creation_time, is_test, saved_content: null, submitted_at: null });
+  res.json({
+    sub,
+    exercise_sub,
+    creation_time,
+    is_test,
+    saved_content: null,
+    submitted_at: null,
+    is_finished: false,
+  });
+});
+
+/**
+ * GET /v1/student/dashboard
+ * Returns all non-test exercises for the authenticated student, including
+ * completion status, teacher feedback and score.
+ */
+router.get('/student/dashboard', requireAuth, async (req: Request, res: Response) => {
+  const authUser = req.authUser!;
+
+  const { data: entries, error: entriesError } = await supabase
+    .from('entries')
+    .select(
+      'id, sub, exercise_id, creation_time, submitted_at, submitted_content, note, teacher_feedback, content, is_test',
+    )
+    .eq('auth_user_id', authUser.id)
+    .eq('is_test', false)
+    .order('creation_time', { ascending: false });
+
+  if (entriesError) {
+    res.status(500).json({ error: entriesError.message });
+    return;
+  }
+
+  const entryRows = entries ?? [];
+  if (entryRows.length === 0) {
+    res.json({ exercises: [] });
+    return;
+  }
+
+  const exerciseIds = [...new Set(entryRows.map((e) => e.exercise_id))];
+  const entryIds = entryRows.map((e) => e.id);
+
+  const [{ data: exercises, error: exercisesError }, { data: reports, error: reportsError }] = await Promise.all([
+    supabase.from('exercises').select('id, sub, content').in('id', exerciseIds),
+    supabase.from('student_reports').select('entry_id, score').in('entry_id', entryIds),
+  ]);
+
+  if (exercisesError) {
+    res.status(500).json({ error: exercisesError.message });
+    return;
+  }
+
+  if (reportsError) {
+    res.status(500).json({ error: reportsError.message });
+    return;
+  }
+
+  const exerciseById = new Map((exercises ?? []).map((ex) => [ex.id, ex]));
+  const reportByEntryId = new Map((reports ?? []).map((r) => [r.entry_id, r]));
+
+  const payload = entryRows.map((entry) => {
+    const exercise = exerciseById.get(entry.exercise_id);
+    const report = reportByEntryId.get(entry.id);
+    const score = report?.score ?? entry.note ?? null;
+    const isCompleted = entry.submitted_content !== null || entry.submitted_at !== null;
+
+    return {
+      entry_sub: entry.sub,
+      exercise_sub: exercise?.sub ?? null,
+      title: tryExtractExerciseTitle(exercise?.content ?? null),
+      is_completed: isCompleted,
+      is_locked: entry.submitted_at !== null,
+      has_saved_content: entry.content !== null,
+      score,
+      teacher_feedback: entry.teacher_feedback ?? null,
+      creation_time: entry.creation_time,
+      submitted_at: entry.submitted_at ?? null,
+    };
+  });
+
+  res.json({ exercises: payload });
 });
 
 /**
@@ -207,9 +301,17 @@ router.post('/user/:user_sub/note', requireAuth, async (req: Request<{ user_sub:
     return;
   }
 
+  const now = Math.floor(Date.now() / 1000);
+  const payload: { note: number | null; submitted_at?: number } = {
+    note: note !== null ? Number(note) : null,
+  };
+  if (note !== null) {
+    payload.submitted_at = now;
+  }
+
   const { error } = await supabase
     .from('entries')
-    .update({ note: note !== null ? Number(note) : null })
+    .update(payload)
     .eq('sub', user_sub);
 
   if (error) {

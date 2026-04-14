@@ -270,9 +270,8 @@ router.post('/exercise/:exercise_sub/push', requireAuth, async (req: Request<{ e
 
 /**
  * POST /v1/exercise/:exercise_sub/submit
- * Submits and locks the student's exercise entry. Idempotent — returns 409 if
- * already submitted. Accepts the latest editor code in the request body so the
- * very last unsaved state is captured.
+ * Marks the student's exercise as finished (manual finish), but does not lock
+ * editing yet. Locking happens later when teacher grading is applied.
  */
 router.post('/exercise/:exercise_sub/submit', requireAuth, async (req: Request<{ exercise_sub: string }>, res: Response) => {
   const exercise_sub = req.params.exercise_sub;
@@ -286,7 +285,7 @@ router.post('/exercise/:exercise_sub/submit', requireAuth, async (req: Request<{
 
   const { data: userRecord, error: userError } = await supabase
     .from('entries')
-    .select('id, sub, submitted_at, content')
+    .select('id, sub, submitted_at, submitted_content, content')
     .eq('auth_user_id', authUser.id)
     .eq('exercise_id', exercise.id)
     .order('creation_time', { ascending: false })
@@ -304,16 +303,20 @@ router.post('/exercise/:exercise_sub/submit', requireAuth, async (req: Request<{
   }
 
   if (userRecord.submitted_at !== null) {
-    res.status(409).json({ error: 'Already submitted' });
+    res.status(423).json({ error: 'Exercise is locked after grading' });
     return;
   }
 
-  const submittedAt = Math.floor(Date.now() / 1000);
+  if (userRecord.submitted_content !== null) {
+    res.json({ submitted_at: null, is_finished: true });
+    return;
+  }
+
   const finalCode: string = req.body?.content ?? userRecord.content ?? '';
 
   const { error: updateError } = await supabase
     .from('entries')
-    .update({ submitted_at: submittedAt, submitted_content: finalCode })
+    .update({ submitted_content: finalCode })
     .eq('id', userRecord.id);
 
   if (updateError) {
@@ -321,7 +324,7 @@ router.post('/exercise/:exercise_sub/submit', requireAuth, async (req: Request<{
     return;
   }
 
-  res.json({ submitted_at: submittedAt });
+  res.json({ submitted_at: null, is_finished: true });
 });
 
 /**
@@ -681,7 +684,7 @@ ${JSON.stringify(conversations)}
 
     const [{ error: reportError }, { error: noteError }] = await Promise.all([
       supabase.from('student_reports').upsert(payload, { onConflict: 'entry_id' }),
-      supabase.from('entries').update({ note: score }).eq('id', user.id),
+      supabase.from('entries').update({ note: score, submitted_at: now }).eq('id', user.id),
     ]);
 
     if (reportError) {
