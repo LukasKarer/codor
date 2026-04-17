@@ -416,9 +416,9 @@ const handleSubmit = async () => {
               <div>
                 <CardTitle class="flex items-center gap-2">
                   <CheckCircle2 class="h-5 w-5 text-primary" />
-                  {{ t(L.teacher.upload.learningSteps) }}
+                  {{ t(L.teacher.upload.learningSteps.title) }}
                 </CardTitle>
-                <CardDescription>{{ t(L.teacher.upload.learningStepsDescription) }}</CardDescription>
+                <CardDescription>{{ t(L.teacher.upload.learningSteps.description) }}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -428,7 +428,7 @@ const handleSubmit = async () => {
               >
                 <Loader2 v-if="isGenerating" class="mr-2 h-4 w-4 animate-spin" />
                 <Target v-else class="mr-2 h-4 w-4" />
-                {{ isGenerating ? t(L.teacher.upload.generating) : t(L.teacher.upload.generateTasks) }}
+                {{ isGenerating ? t(L.teacher.upload.generating) : t(L.teacher.upload.learningSteps.generate) }}
               </Button>
             </div>
           </CardHeader>
@@ -461,7 +461,7 @@ const handleSubmit = async () => {
                       <span class="text-xs font-bold text-white">{{ index + 1 }}</span>
                     </div>
                     <span class="text-xs text-muted-foreground">
-                      {{ t(L.teacher.upload.lines) }} {{ step.lineStart }}-{{ step.lineEnd }}
+                      {{ t(L.teacher.upload.learningSteps.lines) }} {{ step.lineStart }}-{{ step.lineEnd }}
                     </span>
                   </div>
                   <div class="flex items-center gap-1">
@@ -483,7 +483,7 @@ const handleSubmit = async () => {
                     <Textarea
                       v-if="editingStep === step.id"
                       :model-value="step.description"
-                      placeholder="Describe this step..."
+                      :placeholder="t(L.teacher.upload.learningSteps.placeholder)"
                       :rows="2"
                       class="text-sm"
                       autofocus
@@ -491,13 +491,13 @@ const handleSubmit = async () => {
                       @click.stop
                     />
                     <p v-else class="text-sm text-foreground leading-relaxed">
-                      {{ step.description || t(L.teacher.upload.clickToAddDescription) }}
+                      {{ step.description || t(L.teacher.upload.learningSteps.clickToAddDescription) }}
                     </p>
                   </div>
 
                   <div v-if="editingStep === step.id" class="flex gap-3">
                     <div class="flex-1">
-                      <Label class="text-xs">{{ t(L.teacher.upload.startLine) }}</Label>
+                      <Label class="text-xs">{{ t(L.teacher.upload.learningSteps.startLine) }}</Label>
                       <Input
                         type="number"
                         min="1"
@@ -510,7 +510,7 @@ const handleSubmit = async () => {
                       />
                     </div>
                     <div class="flex-1">
-                      <Label class="text-xs">{{ t(L.teacher.upload.endLine) }}</Label>
+                      <Label class="text-xs">{{ t(L.teacher.upload.learningSteps.endLine) }}</Label>
                       <Input
                         type="number"
                         min="1"
@@ -544,7 +544,7 @@ const handleSubmit = async () => {
             <div class="flex justify-center pt-2">
               <Button type="button" size="sm" variant="outline" class="w-full" @click="addStep">
                 <Plus class="mr-1 h-4 w-4" />
-                {{ t(L.teacher.upload.addManualStep) }}
+                {{ t(L.teacher.upload.learningSteps.addManualStep) }}
               </Button>
             </div>
           </CardContent>
