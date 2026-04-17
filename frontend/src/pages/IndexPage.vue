@@ -391,6 +391,7 @@ onMounted(() => {
           <ChatWindow
             :ai-chat-mode="examSettings?.aiChatMode ?? 'enabled'"
             :locked="exerciseStore.isExerciseLocked"
+            :exercise-title="exerciseTitle"
           />
         </ResizablePanel>
       </ResizablePanelGroup>
