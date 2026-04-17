@@ -238,6 +238,7 @@ const loadExercise = async (overrideId?: string) => {
 
     exerciseStore.exerciseId = targetExerciseId
     exerciseStore.exerciseDescription = parsedContent.description
+    exerciseStore.steps = parsedContent.steps ?? []
     exerciseTitle.value = parsedContent.title
     // Set the exercise's default code first; overwritten below if the student has saved work
     exerciseStore.code = parsedContent.code

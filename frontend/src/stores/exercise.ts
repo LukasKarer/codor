@@ -2,10 +2,10 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { L } from '@/locales/keys'
-import type { Message, CodeHighlight } from '@/lib/ai'
+import type { Message, CodeHighlight, Step } from '@/lib/ai'
 import type { ExamSettings } from '@/lib/api'
 
-export type { Message, CodeHighlight }
+export type { Message, CodeHighlight, Step }
 
 const WELCOME_MESSAGE_ID = 1
 
@@ -38,6 +38,7 @@ export const useExerciseStore = defineStore('exercise', () => {
   const code = ref(initialCode)
   const messages = ref<Message[]>([makeWelcomeMessage()])
   const exerciseDescription = ref(defaultDescription.value)
+  const steps = ref<Step[]>([])
   const codeHighlight = ref<CodeHighlight | null>(null)
   const isStreaming = ref(false)
   const exerciseId = ref<string | null>(null)
@@ -72,12 +73,14 @@ export const useExerciseStore = defineStore('exercise', () => {
     submittedAt.value = null
     isFinished.value = false
     entryCreationTime.value = null
+    steps.value = []
   }
 
   return {
     code,
     messages,
     exerciseDescription,
+    steps,
     codeHighlight,
     isStreaming,
     exerciseId,
