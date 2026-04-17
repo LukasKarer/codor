@@ -6,6 +6,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { toast } from 'vue-sonner'
 import { saveTeacherFeedback } from '@/lib/api'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   studentSub: string
@@ -53,16 +57,16 @@ const handleSave = async () => {
     <CardHeader>
       <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
         <User class="h-6 w-6 text-blue-300" />
-        Teacher Feedback
+        {{ t(L.teacher.feedback.title) }}
       </CardTitle>
       <CardDescription class="text-slate-400">
-        Leave custom written feedback for this student's solution.
+        {{ t(L.teacher.feedback.description) }}
       </CardDescription>
     </CardHeader>
     <CardContent class="space-y-4">
       <Textarea
         v-model="feedback"
-        placeholder="Write your feedback here..."
+        :placeholder="t(L.teacher.feedback.placeholder)"
         class="min-h-[100px] border-white/20 bg-black/20 focus-visible:ring-blue-500"
       />
       <div class="flex gap-2">
@@ -73,7 +77,7 @@ const handleSave = async () => {
         @click="feedback = ''"
       >
         <X class="h-4 w-4 mr-2" />
-        Clear
+        {{ t(L.teacher.feedback.clear) }}
       </Button>
       <div class="flex-1" />
       <Button
@@ -89,7 +93,7 @@ const handleSave = async () => {
         <!-- Invisible placeholder that always holds the full width -->
         <span class="inline-flex items-center opacity-0 select-none pointer-events-none" aria-hidden="true">
           <CheckCircle2 class="mr-2 h-4 w-4" />
-          Save Feedback
+          {{ t(L.teacher.feedback.save) }}
         </span>
         <!-- Animated content overlaid absolutely -->
         <span class="absolute inset-0 flex items-center justify-center">
@@ -99,7 +103,7 @@ const handleSave = async () => {
             class="transition-all duration-300 overflow-hidden whitespace-nowrap"
             :class="isSaved ? 'max-w-0 opacity-0' : 'max-w-[200px] opacity-100 ml-2'"
           >
-            Save Feedback
+            {{ t(L.teacher.feedback.save) }}
           </span>
         </span>
       </Button>

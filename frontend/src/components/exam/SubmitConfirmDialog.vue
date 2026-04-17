@@ -2,7 +2,10 @@
 import { Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { EXAM_STRINGS } from './constants'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   open: boolean
@@ -23,8 +26,8 @@ const emit = defineEmits<{
     >
       <Card class="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{{ EXAM_STRINGS.confirmDialog.title }}</CardTitle>
-          <CardDescription>{{ EXAM_STRINGS.confirmDialog.description }}</CardDescription>
+          <CardTitle>{{ t(L.exam.submitDialog.title) }}</CardTitle>
+          <CardDescription>{{ t(L.exam.submitDialog.description) }}</CardDescription>
         </CardHeader>
         <CardContent class="flex justify-end gap-2">
           <Button
@@ -32,7 +35,7 @@ const emit = defineEmits<{
             :disabled="props.isSubmitting"
             @click="emit('cancel')"
           >
-            {{ EXAM_STRINGS.confirmDialog.cancelLabel }}
+            {{ t(L.exam.submitDialog.cancel) }}
           </Button>
           <Button
             variant="destructive"
@@ -40,7 +43,7 @@ const emit = defineEmits<{
             @click="emit('confirm')"
           >
             <Loader2 v-if="props.isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
-            {{ EXAM_STRINGS.confirmDialog.confirmLabel }}
+            {{ t(L.exam.submitDialog.confirm) }}
           </Button>
         </CardContent>
       </Card>

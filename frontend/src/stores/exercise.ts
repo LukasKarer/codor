@@ -1,9 +1,13 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import type { Message, CodeHighlight } from '@/lib/ai'
 import type { ExamSettings } from '@/lib/api'
 
 export type { Message, CodeHighlight }
+
+const WELCOME_MESSAGE_ID = 1
 
 const initialCode = `function greet(name) {
   // This function greets the user
@@ -16,29 +20,24 @@ const initialCode = `function greet(name) {
 const result = greet("Learner");
 console.log(result + " +1");`
 
-const initialExerciseDescription = `In this exercise, you'll learn how to create and use functions in JavaScript. Your goal is to:
-- Create a function called 'greet' that takes a person's name as input
-- The function should create a greeting message with that name
-- Print the greeting to the console
-- Return the greeting so it can be used elsewhere
-- Call the function with a name and use the returned value
-
-Take your time and experiment! If you get stuck, click the "Get Help" button and I'll guide you without giving away the solution.`
-
-const initialMessages: Message[] = [
-  {
-    id: 1,
-    role: 'assistant',
-    content:
-      "Welcome! I'm your coding tutor. Read the exercise description above and start coding. If you need help, just click the 'Get Help' button and I'll guide you!",
-    timestamp: new Date(),
-  },
-]
-
 export const useExerciseStore = defineStore('exercise', () => {
+  const { t } = useI18n()
+
+  const welcomeText = computed(() => t(L.student.welcomeMessage))
+  const defaultDescription = computed(() => t(L.student.defaultExerciseDescription))
+
+  function makeWelcomeMessage(): Message {
+    return {
+      id: WELCOME_MESSAGE_ID,
+      role: 'assistant',
+      content: welcomeText.value,
+      timestamp: new Date(),
+    }
+  }
+
   const code = ref(initialCode)
-  const messages = ref<Message[]>(initialMessages)
-  const exerciseDescription = ref(initialExerciseDescription)
+  const messages = ref<Message[]>([makeWelcomeMessage()])
+  const exerciseDescription = ref(defaultDescription.value)
   const codeHighlight = ref<CodeHighlight | null>(null)
   const isStreaming = ref(false)
   const exerciseId = ref<string | null>(null)
@@ -48,20 +47,32 @@ export const useExerciseStore = defineStore('exercise', () => {
   const isExerciseLocked = ref(false)
   const submittedAt = ref<number | null>(null)
   const isFinished = ref(false)
+  const entryCreationTime = ref<number | null>(null)
+
+  // Keep welcome message in sync with locale while chat is still at initial state
+  watch(welcomeText, (text) => {
+    const first = messages.value[0]
+    if (first?.id === WELCOME_MESSAGE_ID) {
+      first.content = text
+    }
+  })
+
+  // Keep default description in sync unless an exercise has been loaded
+  watch(defaultDescription, (text) => {
+    if (!exerciseId.value) {
+      exerciseDescription.value = text
+    }
+  })
 
   function resetForExerciseSwitch() {
     codeHighlight.value = null
     isStreaming.value = false
-    messages.value = initialMessages.map((msg) => ({
-      ...msg,
-      timestamp: new Date(msg.timestamp),
-    }))
+    messages.value = [makeWelcomeMessage()]
     isExerciseLocked.value = false
     submittedAt.value = null
     isFinished.value = false
     entryCreationTime.value = null
   }
-  const entryCreationTime = ref<number | null>(null)
 
   return {
     code,

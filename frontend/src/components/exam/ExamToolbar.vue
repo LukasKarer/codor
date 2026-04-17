@@ -2,7 +2,10 @@
 import { computed } from 'vue'
 import { Clock, Lock, Send, Loader2, CheckCircle2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { EXAM_STRINGS } from './constants'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   timeRemainingSeconds: number | null
@@ -54,7 +57,7 @@ const formattedTime = computed(() => {
     >
       <Loader2 v-if="isSubmitting" class="mr-1.5 h-4 w-4 animate-spin" />
       <Send v-else class="mr-1.5 h-4 w-4" />
-      {{ EXAM_STRINGS.submitButton }}
+      {{ t(L.exam.toolbar.finish) }}
     </Button>
 
     <div
@@ -62,7 +65,7 @@ const formattedTime = computed(() => {
       class="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
     >
       <CheckCircle2 class="h-3.5 w-3.5" />
-      {{ EXAM_STRINGS.finishedBadge }}
+      {{ t(L.exam.toolbar.finishedAwaiting) }}
     </div>
 
     <!-- Locked badge -->
@@ -71,7 +74,7 @@ const formattedTime = computed(() => {
       class="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border border-border text-muted-foreground"
     >
       <Lock class="h-3.5 w-3.5" />
-      {{ EXAM_STRINGS.lockedBadge }}
+      {{ t(L.exam.toolbar.submittedReadOnly) }}
     </div>
   </div>
 </template>

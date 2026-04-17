@@ -17,7 +17,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
 import ExamSettingsCard from '@/components/ExamSettings.vue'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { generateTasks, generateDescription } from '@/lib/ai'
 import type { Step as AIStep } from '@/lib/ai'
@@ -42,6 +45,7 @@ const STEP_DECORATION_CLASSES = [
   'teacher-step-red',
 ]
 
+const { t } = useI18n()
 const router = useRouter()
 const isGenerating = ref(false)
 const isGeneratingDescription = ref(false)
@@ -241,8 +245,8 @@ const handleSubmit = async () => {
     !description.value.trim() ||
     steps.value.length === 0
   ) {
-    toast.error('Missing Information', {
-      description: 'Please fill in all fields and add at least one step.',
+    toast.error(t(L.teacher.upload.missingInfo), {
+      description: t(L.teacher.upload.missingInfoDescription),
     })
     return
   }
@@ -307,8 +311,8 @@ const handleSubmit = async () => {
             <Code class="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 class="font-semibold text-foreground">Teacher Dashboard</h1>
-            <p class="text-xs text-muted-foreground">Create a new coding task</p>
+            <h1 class="font-semibold text-foreground">{{ t(L.teacher.upload.dashboardLink) }}</h1>
+            <p class="text-xs text-muted-foreground">{{ t(L.teacher.upload.title) }}</p>
           </div>
         </div>
         <div class="flex items-center gap-3">
@@ -319,8 +323,9 @@ const handleSubmit = async () => {
           >
             <Loader2 v-if="isPublishing" class="mr-2 h-4 w-4 animate-spin" />
             <Upload v-else class="mr-2 h-4 w-4" />
-            {{ isPublishing ? 'Publishing...' : 'Publish Task' }}
+            {{ isPublishing ? t(L.teacher.upload.publishing) : t(L.teacher.upload.publishTask) }}
           </Button>
+          <LanguageToggle />
           <ThemeToggle />
         </div>
       </div>
@@ -331,11 +336,11 @@ const handleSubmit = async () => {
       <!-- Left Side: Title & Code -->
       <div class="flex w-1/2 flex-col border-r border-border">
         <div class="border-b border-border p-4">
-          <Label for="exercise-title" class="text-sm font-medium">Exercise Title</Label>
+          <Label for="exercise-title" class="text-sm font-medium">{{ t(L.teacher.upload.exerciseTitle) }}</Label>
           <Input
             id="exercise-title"
             v-model="title"
-            placeholder="e.g., Build a greeting function"
+            :placeholder="t(L.teacher.upload.exerciseTitlePlaceholder)"
             class="mt-2"
           />
         </div>
@@ -343,7 +348,7 @@ const handleSubmit = async () => {
         <div class="flex flex-1 flex-col overflow-hidden">
           <div class="border-b border-border px-4 py-2">
             <span class="font-mono text-sm font-medium text-muted-foreground">
-              Teacher's Solution Code
+              {{ t(L.teacher.upload.solutionCode) }}
             </span>
           </div>
 
@@ -376,9 +381,9 @@ const handleSubmit = async () => {
               <div>
                 <CardTitle class="flex items-center gap-2">
                   <Target class="h-5 w-5 text-primary" />
-                  Task Description
+                  {{ t(L.teacher.upload.taskDescription) }}
                 </CardTitle>
-                <CardDescription>AI-generated task overview (editable)</CardDescription>
+                <CardDescription>{{ t(L.teacher.upload.taskDescriptionPlaceholder) }}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -388,14 +393,14 @@ const handleSubmit = async () => {
               >
                 <Loader2 v-if="isGeneratingDescription" class="mr-2 h-4 w-4 animate-spin" />
                 <Target v-else class="mr-2 h-4 w-4" />
-                {{ isGeneratingDescription ? 'Generating...' : 'Generate Description' }}
+                {{ isGeneratingDescription ? t(L.teacher.upload.generating) : t(L.teacher.upload.generateDescription) }}
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             <Textarea
               v-model="description"
-              placeholder="The AI will generate a description based on your code..."
+              :placeholder="t(L.teacher.upload.aiWillGenerate)"
               :rows="6"
             />
           </CardContent>
@@ -411,9 +416,9 @@ const handleSubmit = async () => {
               <div>
                 <CardTitle class="flex items-center gap-2">
                   <CheckCircle2 class="h-5 w-5 text-primary" />
-                  Learning Steps
+                  {{ t(L.teacher.upload.learningSteps) }}
                 </CardTitle>
-                <CardDescription>AI-generated steps linked to code lines</CardDescription>
+                <CardDescription>{{ t(L.teacher.upload.learningStepsDescription) }}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -423,7 +428,7 @@ const handleSubmit = async () => {
               >
                 <Loader2 v-if="isGenerating" class="mr-2 h-4 w-4 animate-spin" />
                 <Target v-else class="mr-2 h-4 w-4" />
-                {{ isGenerating ? 'Generating...' : 'Generate Tasks' }}
+                {{ isGenerating ? t(L.teacher.upload.generating) : t(L.teacher.upload.generateTasks) }}
               </Button>
             </div>
           </CardHeader>
@@ -456,7 +461,7 @@ const handleSubmit = async () => {
                       <span class="text-xs font-bold text-white">{{ index + 1 }}</span>
                     </div>
                     <span class="text-xs text-muted-foreground">
-                      Lines {{ step.lineStart }}-{{ step.lineEnd }}
+                      {{ t(L.teacher.upload.lines) }} {{ step.lineStart }}-{{ step.lineEnd }}
                     </span>
                   </div>
                   <div class="flex items-center gap-1">
@@ -486,13 +491,13 @@ const handleSubmit = async () => {
                       @click.stop
                     />
                     <p v-else class="text-sm text-foreground leading-relaxed">
-                      {{ step.description || 'Click to add a description...' }}
+                      {{ step.description || t(L.teacher.upload.clickToAddDescription) }}
                     </p>
                   </div>
 
                   <div v-if="editingStep === step.id" class="flex gap-3">
                     <div class="flex-1">
-                      <Label class="text-xs">Start Line</Label>
+                      <Label class="text-xs">{{ t(L.teacher.upload.startLine) }}</Label>
                       <Input
                         type="number"
                         min="1"
@@ -505,7 +510,7 @@ const handleSubmit = async () => {
                       />
                     </div>
                     <div class="flex-1">
-                      <Label class="text-xs">End Line</Label>
+                      <Label class="text-xs">{{ t(L.teacher.upload.endLine) }}</Label>
                       <Input
                         type="number"
                         min="1"
@@ -539,7 +544,7 @@ const handleSubmit = async () => {
             <div class="flex justify-center pt-2">
               <Button type="button" size="sm" variant="outline" class="w-full" @click="addStep">
                 <Plus class="mr-1 h-4 w-4" />
-                Add Manual Step
+                {{ t(L.teacher.upload.addManualStep) }}
               </Button>
             </div>
           </CardContent>

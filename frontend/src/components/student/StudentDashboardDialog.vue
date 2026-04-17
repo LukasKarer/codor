@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { StudentDashboardExercise } from '@/lib/api'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   open: boolean
@@ -60,10 +64,10 @@ function handleManualJoin() {
             <div>
               <CardTitle class="flex items-center gap-2">
                 <BookOpen class="h-5 w-5 text-primary" />
-                Student Dashboard
+                {{ t(L.student.dashboardDialog.title) }}
               </CardTitle>
               <CardDescription>
-                Review completed work, teacher feedback, and continue an open exercise.
+                {{ t(L.student.dashboardDialog.description) }}
               </CardDescription>
             </div>
             <Button variant="ghost" size="icon" class="h-8 w-8" @click="emit('close')">
@@ -75,24 +79,24 @@ function handleManualJoin() {
         <CardContent class="flex min-h-0 flex-1 flex-col gap-4 p-4">
           <div class="grid gap-3 md:grid-cols-[2fr_1fr]">
             <div class="space-y-2">
-              <Label for="manual-exercise-id">Open by Exercise ID</Label>
+              <Label for="manual-exercise-id">{{ t(L.student.dashboardDialog.openByExerciseId) }}</Label>
               <div class="flex gap-2">
                 <Input
                   id="manual-exercise-id"
                   v-model="manualExerciseId"
-                  placeholder="e.g. abc123def456"
+                  :placeholder="t(L.student.dashboardDialog.exerciseIdPlaceholder)"
                   @keyup.enter="handleManualJoin"
                 />
                 <Button
                   :disabled="!manualExerciseId.trim() || switchingExerciseId !== null"
                   @click="handleManualJoin"
                 >
-                  Open
+                  {{ t(L.student.dashboardDialog.open) }}
                 </Button>
               </div>
             </div>
             <div class="flex items-end justify-end">
-              <Button variant="outline" :disabled="loading" @click="emit('refresh')">Refresh</Button>
+              <Button variant="outline" :disabled="loading" @click="emit('refresh')">{{ t(L.student.dashboardDialog.refresh) }}</Button>
             </div>
           </div>
 
@@ -109,7 +113,7 @@ function handleManualJoin() {
               <div class="border-b border-border px-4 py-3">
                 <h3 class="flex items-center gap-2 text-sm font-semibold">
                   <CircleDashed class="h-4 w-4 text-amber-500" />
-                  Open Exercises
+                  {{ t(L.student.dashboardDialog.openExercises) }}
                 </h3>
               </div>
               <ScrollArea class="min-h-0 flex-1">
@@ -122,7 +126,7 @@ function handleManualJoin() {
                     <CardHeader class="pb-2">
                       <CardTitle class="text-base">{{ exercise.title }}</CardTitle>
                       <CardDescription>
-                        Started {{ formatDate(exercise.creation_time) }}
+                        {{ t(L.student.dashboardDialog.started) }} {{ formatDate(exercise.creation_time) }}
                       </CardDescription>
                     </CardHeader>
                     <CardContent class="flex items-center justify-between pt-0">
@@ -130,9 +134,9 @@ function handleManualJoin() {
                         v-if="currentExerciseId === exercise.exercise_sub"
                         class="rounded-full border border-blue-400/40 bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-500"
                       >
-                        Current in IDE
+                        {{ t(L.student.dashboardDialog.currentInIDE) }}
                       </span>
-                      <span v-else class="text-xs text-muted-foreground">Not opened now</span>
+                      <span v-else class="text-xs text-muted-foreground">{{ t(L.student.dashboardDialog.notOpenedNow) }}</span>
                       <Button
                         size="sm"
                         :disabled="!exercise.exercise_sub || switchingExerciseId === exercise.exercise_sub"
@@ -142,12 +146,12 @@ function handleManualJoin() {
                           v-if="switchingExerciseId === exercise.exercise_sub"
                           class="mr-1.5 h-3.5 w-3.5 animate-spin"
                         />
-                        Open
+                        {{ t(L.student.dashboardDialog.open) }}
                       </Button>
                     </CardContent>
                   </Card>
                   <p v-if="openExercises.length === 0" class="p-2 text-sm text-muted-foreground">
-                    No open exercises.
+                    {{ t(L.student.dashboardDialog.noOpenExercises) }}
                   </p>
                 </div>
               </ScrollArea>
@@ -157,7 +161,7 @@ function handleManualJoin() {
               <div class="border-b border-border px-4 py-3">
                 <h3 class="flex items-center gap-2 text-sm font-semibold">
                   <CheckCircle2 class="h-4 w-4 text-emerald-500" />
-                  Completed Exercises
+                  {{ t(L.student.dashboardDialog.completedExercises) }}
                 </h3>
               </div>
               <ScrollArea class="min-h-0 flex-1">
@@ -170,23 +174,23 @@ function handleManualJoin() {
                     <CardHeader class="pb-2">
                       <CardTitle class="text-base">{{ exercise.title }}</CardTitle>
                       <CardDescription>
-                        Finished {{ formatDate(exercise.submitted_at || exercise.creation_time) }}
+                        {{ t(L.student.dashboardDialog.finished) }} {{ formatDate(exercise.submitted_at || exercise.creation_time) }}
                       </CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-2 pt-0">
                       <div class="flex items-center gap-2 text-sm">
                         <Trophy class="h-4 w-4 text-amber-500" />
-                        Score:
-                        <span class="font-semibold">{{ exercise.score ?? 'Pending grading' }}</span>
+                        {{ t(L.student.dashboardDialog.score) }}
+                        <span class="font-semibold">{{ exercise.score ?? t(L.student.dashboardDialog.pendingGrading) }}</span>
                       </div>
                       <div class="flex items-start gap-2 text-sm text-muted-foreground">
                         <MessageSquareText class="mt-0.5 h-4 w-4 text-blue-500" />
-                        <span>{{ exercise.teacher_feedback || 'No teacher feedback yet.' }}</span>
+                        <span>{{ exercise.teacher_feedback || t(L.student.dashboardDialog.noFeedback) }}</span>
                       </div>
                     </CardContent>
                   </Card>
                   <p v-if="completedExercises.length === 0" class="p-2 text-sm text-muted-foreground">
-                    No completed exercises yet.
+                    {{ t(L.student.dashboardDialog.noCompletedExercises) }}
                   </p>
                 </div>
               </ScrollArea>

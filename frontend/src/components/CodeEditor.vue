@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch, onUnmounted } from 'vue'
 import { Play, Copy, Check } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { Button } from '@/components/ui/button'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
@@ -16,6 +18,7 @@ const props = defineProps<{
   readonly?: boolean
 }>()
 
+const { t } = useI18n()
 const exerciseStore = useExerciseStore()
 const copied = ref(false)
 const logs = ref<LogEntry[]>([])
@@ -178,7 +181,7 @@ onUnmounted(() => {
             class="flex-1 overflow-auto p-4 font-mono text-sm text-muted-foreground scrollbar-thin"
           >
             <p v-if="logs.length === 0" class="text-muted-foreground/50 italic">
-              Run code to see output...
+              {{ t(L.editor.runToSeeOutput) }}
             </p>
             <p
               v-for="(log, i) in logs"

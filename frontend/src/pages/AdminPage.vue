@@ -19,7 +19,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
 import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import type { Organisation, UserProfile } from '@/lib/api'
@@ -32,6 +35,8 @@ import {
   updateProfile,
 } from '@/lib/api'
 
+const { t } = useI18n()
+
 // ─── Types ──────────────────────────────────────────────────
 type Tab = 'organisations' | 'profiles'
 
@@ -43,7 +48,7 @@ const authStore = useAuthStore()
 const isSystemAdmin = computed(() => authStore.isSystemAdmin)
 
 /** Label for the second tab */
-const secondTabLabel = computed(() => isSystemAdmin.value ? 'Profiles' : 'Members')
+const secondTabLabel = computed(() => isSystemAdmin.value ? t(L.admin.profiles) : t(L.admin.members))
 
 const activeTab = ref<Tab>('organisations')
 const loadingOrgs = ref(false)
@@ -136,7 +141,7 @@ async function submitOrgForm() {
   try {
     parsedData = JSON.parse(orgForm.value.data || '{}')
   } catch {
-    orgFormError.value = 'Data field must be valid JSON'
+    orgFormError.value = t(L.admin.dataInvalid)
     return
   }
   const parsedAdmins = orgForm.value.admins
@@ -157,7 +162,7 @@ async function submitOrgForm() {
         data: parsedData,
       })
       organisations.value.push(created)
-      toast.success('Organisation created')
+      toast.success(t(L.admin.orgCreated))
     } else if (selectedOrg.value) {
       const payload: Parameters<typeof updateOrganisation>[1] = {
         name: orgForm.value.name.trim(),
@@ -172,7 +177,7 @@ async function submitOrgForm() {
       const idx = organisations.value.findIndex((o) => o.id === updated.id)
       if (idx !== -1) organisations.value[idx] = updated
       if (selectedOrg.value.id === updated.id) selectedOrg.value = updated
-      toast.success('Organisation updated')
+      toast.success(t(L.admin.orgUpdated))
     }
     showOrgModal.value = false
   } catch (e: unknown) {
@@ -181,12 +186,12 @@ async function submitOrgForm() {
 }
 
 async function handleDeleteOrg(org: Organisation) {
-  if (!confirm(`Delete organisation "${org.name}"? This cannot be undone.`)) return
+  if (!confirm(t(L.admin.deleteConfirm, { name: org.name }))) return
   try {
     await deleteOrganisation(org.id)
     organisations.value = organisations.value.filter((o) => o.id !== org.id)
     if (selectedOrg.value?.id === org.id) selectedOrg.value = null
-    toast.success('Organisation deleted')
+    toast.success(t(L.admin.orgDeleted))
   } catch (e: unknown) {
     toast.error('Error: ' + (e instanceof Error ? e.message : String(e)))
   }
@@ -263,9 +268,9 @@ function copyToClipboard(text: string, label: string) {
             <Shield v-else class="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 class="text-xl font-bold text-foreground">Admin Panel</h1>
+            <h1 class="text-xl font-bold text-foreground">{{ t(L.admin.title) }}</h1>
             <p class="text-xs text-muted-foreground">
-              {{ isSystemAdmin ? 'System Administrator' : 'Organisation Administrator' }}
+              {{ isSystemAdmin ? t(L.admin.systemAdmin) : t(L.admin.orgAdmin) }}
             </p>
           </div>
         </div>
@@ -273,6 +278,7 @@ function copyToClipboard(text: string, label: string) {
           <span v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
             {{ authStore.user.email }}
           </span>
+          <LanguageToggle />
           <ThemeToggle />
           <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">
             <LogOut class="h-4 w-4" />
@@ -289,7 +295,7 @@ function copyToClipboard(text: string, label: string) {
           :class="activeTab === 'organisations' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'"
           @click="activeTab = 'organisations'"
         >
-          Organisations
+          {{ t(L.admin.organisations) }}
         </button>
         <button
           class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
@@ -310,15 +316,15 @@ function copyToClipboard(text: string, label: string) {
         <!-- Left: list -->
         <div class="w-80 shrink-0 flex flex-col gap-3">
           <div class="flex items-center justify-between">
-            <h2 class="text-base font-semibold">Organisations</h2>
+            <h2 class="text-base font-semibold">{{ t(L.admin.organisations) }}</h2>
             <Button v-if="isSystemAdmin" size="sm" @click="openCreateOrg">
-              <Plus class="h-4 w-4 mr-1" /> New
+              <Plus class="h-4 w-4 mr-1" /> {{ t(L.admin.new) }}
             </Button>
           </div>
 
-          <div v-if="loadingOrgs" class="text-sm text-muted-foreground">Loading…</div>
+          <div v-if="loadingOrgs" class="text-sm text-muted-foreground">{{ t(L.admin.loading) }}</div>
           <div v-else-if="organisations.length === 0" class="text-sm text-muted-foreground">
-            No organisations yet.
+            {{ t(L.admin.noOrganisations) }}
           </div>
 
           <div
@@ -350,7 +356,7 @@ function copyToClipboard(text: string, label: string) {
             v-if="!selectedOrg"
             class="flex h-full items-center justify-center text-muted-foreground text-sm"
           >
-            Select an organisation to view details
+            {{ t(L.admin.selectOrganisation) }}
           </div>
 
           <div v-else class="space-y-6">
@@ -362,7 +368,7 @@ function copyToClipboard(text: string, label: string) {
               </div>
               <div class="flex gap-2 shrink-0">
                 <Button size="sm" variant="outline" @click="openEditOrg(selectedOrg)">
-                  <Pencil class="h-4 w-4 mr-1" /> Edit
+                  <Pencil class="h-4 w-4 mr-1" /> {{ t(L.admin.edit) }}
                 </Button>
                 <Button
                   v-if="isSystemAdmin"
@@ -370,7 +376,7 @@ function copyToClipboard(text: string, label: string) {
                   variant="destructive"
                   @click="handleDeleteOrg(selectedOrg)"
                 >
-                  <Trash2 class="h-4 w-4 mr-1" /> Delete
+                  <Trash2 class="h-4 w-4 mr-1" /> {{ t(L.admin.delete) }}
                 </Button>
               </div>
             </div>
@@ -378,14 +384,14 @@ function copyToClipboard(text: string, label: string) {
             <!-- Email patterns -->
             <Card>
               <CardHeader class="pb-2">
-                <CardTitle class="text-sm">Email Patterns</CardTitle>
+                <CardTitle class="text-sm">{{ t(L.admin.emailPatterns) }}</CardTitle>
                 <CardDescription class="text-xs">
-                  At least one must be a substring of the user's email at signup
+                  {{ t(L.admin.emailPatternsDescription) }}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div v-if="selectedOrg.email_patterns.length === 0" class="text-xs text-muted-foreground">
-                  No restrictions — open to everyone
+                  {{ t(L.admin.noRestrictions) }}
                 </div>
                 <div v-else class="flex flex-wrap gap-1.5">
                   <span
@@ -403,12 +409,12 @@ function copyToClipboard(text: string, label: string) {
             <!-- Card v-if="isSystemAdmin"-->
             <Card>
               <CardHeader class="pb-2">
-                <CardTitle class="text-sm">Org Admin Users</CardTitle>
-                <CardDescription class="text-xs">auth.users UUIDs with org-level admin access</CardDescription>
+                <CardTitle class="text-sm">{{ t(L.admin.orgAdminUsers) }}</CardTitle>
+                <CardDescription class="text-xs">{{ t(L.admin.orgAdminUsersDescription) }}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div v-if="selectedOrg.admins.length === 0" class="text-xs text-muted-foreground">
-                  No admins assigned
+                  {{ t(L.admin.noAdmins) }}
                 </div>
                 <ul v-else class="space-y-1">
                   <li
@@ -425,7 +431,7 @@ function copyToClipboard(text: string, label: string) {
             <!-- Data -->
             <Card>
               <CardHeader class="pb-2">
-                <CardTitle class="text-sm">Data (JSON)</CardTitle>
+                <CardTitle class="text-sm">{{ t(L.admin.dataJson) }}</CardTitle>
               </CardHeader>
               <CardContent>
                 <pre class="text-xs bg-muted rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap break-all">{{ JSON.stringify(selectedOrg.data, null, 2) }}</pre>
@@ -439,23 +445,23 @@ function copyToClipboard(text: string, label: string) {
       <div v-if="activeTab === 'profiles'" class="space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-semibold">{{ secondTabLabel }}</h2>
-          <Button size="sm" variant="outline" @click="loadProfiles">Refresh</Button>
+          <Button size="sm" variant="outline" @click="loadProfiles">{{ t(L.admin.refresh) }}</Button>
         </div>
 
-        <div v-if="loadingProfiles" class="text-sm text-muted-foreground">Loading…</div>
+        <div v-if="loadingProfiles" class="text-sm text-muted-foreground">{{ t(L.admin.loading) }}</div>
         <div v-else-if="profiles.length === 0" class="text-sm text-muted-foreground">
-          No profiles found.
+          {{ t(L.admin.noProfiles) }}
         </div>
 
         <div v-else class="overflow-x-auto rounded-lg border border-border">
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-muted/50 text-left text-xs text-muted-foreground">
-                <th class="px-4 py-2 font-medium">Name</th>
-                <th class="px-4 py-2 font-medium">Teacher</th>
-                <th class="px-4 py-2 font-medium">Org Admin</th>
-                <th v-if="isSystemAdmin" class="px-4 py-2 font-medium">Sys Admin</th>
-                <th v-if="isSystemAdmin" class="px-4 py-2 font-medium">Organisation</th>
+                <th class="px-4 py-2 font-medium">{{ t(L.admin.nameColumn) }}</th>
+                <th class="px-4 py-2 font-medium">{{ t(L.admin.teacherColumn) }}</th>
+                <th class="px-4 py-2 font-medium">{{ t(L.admin.orgAdminColumn) }}</th>
+                <th v-if="isSystemAdmin" class="px-4 py-2 font-medium">{{ t(L.admin.sysAdminColumn) }}</th>
+                <th v-if="isSystemAdmin" class="px-4 py-2 font-medium">{{ t(L.admin.organisationColumn) }}</th>
                 <th class="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
@@ -531,7 +537,7 @@ function copyToClipboard(text: string, label: string) {
         <CardHeader>
           <div class="flex items-center justify-between">
             <CardTitle>
-              {{ orgModalMode === 'create' ? 'New Organisation' : 'Edit Organisation' }}
+              {{ orgModalMode === 'create' ? t(L.admin.newOrganisation) : t(L.admin.editOrganisation) }}
             </CardTitle>
             <Button variant="ghost" size="icon" class="h-7 w-7" @click="showOrgModal = false">
               <X class="h-4 w-4" />
@@ -544,34 +550,34 @@ function copyToClipboard(text: string, label: string) {
         <CardContent class="space-y-4">
           <!-- Name -->
           <div class="space-y-1.5">
-            <Label for="org-name">Name</Label>
-            <Input id="org-name" v-model="orgForm.name" placeholder="Acme School" />
+            <Label for="org-name">{{ t(L.admin.name) }}</Label>
+            <Input id="org-name" v-model="orgForm.name" :placeholder="t(L.admin.namePlaceholder)" />
           </div>
 
           <!-- Email patterns -->
           <div class="space-y-1.5">
-            <Label for="org-patterns">Email Patterns</Label>
+            <Label for="org-patterns">{{ t(L.admin.emailPatterns) }}</Label>
             <Input
               id="org-patterns"
               v-model="orgForm.email_patterns"
-              placeholder="@acme.com, @students.acme.com"
+              :placeholder="t(L.admin.emailPatternsPlaceholder)"
             />
             <p class="text-xs text-muted-foreground">
-              Comma-separated substrings. Leave blank to allow any email.
+              {{ t(L.admin.emailPatternsNote) }}
             </p>
           </div>
 
           <!-- Admin user IDs (system admin only) -->
           <!-- div v-if="isSystemAdmin" class="space-y-1.5" -->
           <div class="space-y-1.5">
-            <Label for="org-admins">Org Admin User IDs</Label>
-            <Input id="org-admins" v-model="orgForm.admins" placeholder="uuid1, uuid2, …" />
-            <p class="text-xs text-muted-foreground">Comma-separated auth.users UUIDs</p>
+            <Label for="org-admins">{{ t(L.admin.orgAdminIds) }}</Label>
+            <Input id="org-admins" v-model="orgForm.admins" :placeholder="t(L.admin.orgAdminIdsPlaceholder)" />
+            <p class="text-xs text-muted-foreground">{{ t(L.admin.orgAdminIdsNote) }}</p>
           </div>
 
           <!-- Data JSON -->
           <div class="space-y-1.5">
-            <Label for="org-data">Data (JSON)</Label>
+            <Label for="org-data">{{ t(L.admin.dataJson) }}</Label>
             <textarea
               id="org-data"
               v-model="orgForm.data"
@@ -584,7 +590,7 @@ function copyToClipboard(text: string, label: string) {
           <p v-if="orgFormError" class="text-xs text-destructive">{{ orgFormError }}</p>
           <Button class="w-full" @click="submitOrgForm">
             <Check class="h-4 w-4 mr-2" />
-            {{ orgModalMode === 'create' ? 'Create' : 'Save Changes' }}
+            {{ orgModalMode === 'create' ? t(L.admin.new) : t(L.admin.saveChanges) }}
           </Button>
         </CardContent>
       </Card>
@@ -601,7 +607,7 @@ function copyToClipboard(text: string, label: string) {
       <Card class="w-full max-w-md mx-4">
         <CardHeader>
           <div class="flex items-center justify-between">
-            <CardTitle>Edit Profile</CardTitle>
+            <CardTitle>{{ t(L.admin.editProfile) }}</CardTitle>
             <Button variant="ghost" size="icon" class="h-7 w-7" @click="showProfileModal = false">
               <X class="h-4 w-4" />
             </Button>
@@ -613,8 +619,8 @@ function copyToClipboard(text: string, label: string) {
         <CardContent class="space-y-4">
           <!-- Name -->
           <div class="space-y-1.5">
-            <Label for="edit-name">Name</Label>
-            <Input id="edit-name" v-model="profileForm.name" placeholder="Display name" />
+            <Label for="edit-name">{{ t(L.admin.name) }}</Label>
+            <Input id="edit-name" v-model="profileForm.name" :placeholder="t(L.admin.name)" />
           </div>
 
           <!-- Is Teacher -->
@@ -625,7 +631,7 @@ function copyToClipboard(text: string, label: string) {
               v-model="profileForm.is_teacher"
               class="h-4 w-4 rounded border-input"
             />
-            <Label for="edit-is-teacher">Is Teacher</Label>
+            <Label for="edit-is-teacher">{{ t(L.admin.isTeacher) }}</Label>
           </div>
 
           <!-- Is Org Admin (both org admins and system admins can toggle this) -->
@@ -636,7 +642,7 @@ function copyToClipboard(text: string, label: string) {
               v-model="profileForm.is_admin"
               class="h-4 w-4 rounded border-input"
             />
-            <Label for="edit-is-admin">Is Org Admin</Label>
+            <Label for="edit-is-admin">{{ t(L.admin.isOrgAdmin) }}</Label>
           </div>
 
           <!-- Is System Admin (system admin only) -->
@@ -647,18 +653,18 @@ function copyToClipboard(text: string, label: string) {
               v-model="profileForm.is_system_admin"
               class="h-4 w-4 rounded border-input"
             />
-            <Label for="edit-is-system-admin" class="text-red-600">Is System Admin</Label>
+            <Label for="edit-is-system-admin" class="text-red-600">{{ t(L.admin.isSysAdmin) }}</Label>
           </div>
 
           <!-- Organisation (system admin only) -->
           <div v-if="isSystemAdmin" class="space-y-1.5">
-            <Label for="edit-org-id">Organisation</Label>
+            <Label for="edit-org-id">{{ t(L.admin.organisationColumn) }}</Label>
             <select
               id="edit-org-id"
               v-model="profileForm.organisation_id"
               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground"
             >
-              <option value="">— No organisation —</option>
+              <option value="">{{ t(L.admin.noOrg) }}</option>
               <option v-for="org in organisations" :key="org.id" :value="org.id">
                 {{ org.name || org.id }}
               </option>
@@ -667,7 +673,7 @@ function copyToClipboard(text: string, label: string) {
 
           <Button class="w-full" @click="submitProfileForm">
             <Check class="h-4 w-4 mr-2" />
-            Save Changes
+            {{ t(L.admin.saveChanges) }}
           </Button>
         </CardContent>
       </Card>

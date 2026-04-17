@@ -2,7 +2,10 @@
 import { AlertTriangle } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { EXAM_STRINGS } from './constants'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   open: boolean
@@ -23,13 +26,13 @@ const emit = defineEmits<{
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
             <AlertTriangle class="h-5 w-5 text-destructive" />
-            {{ EXAM_STRINGS.timesUpDialog.title }}
+            {{ t(L.exam.timesUp.title) }}
           </CardTitle>
-          <CardDescription>{{ EXAM_STRINGS.timesUpDialog.description }}</CardDescription>
+          <CardDescription>{{ t(L.exam.timesUp.description) }}</CardDescription>
         </CardHeader>
         <CardContent class="flex justify-end">
           <Button @click="emit('close')">
-            {{ EXAM_STRINGS.timesUpDialog.closeLabel }}
+            {{ t(L.exam.timesUp.ok) }}
           </Button>
         </CardContent>
       </Card>
