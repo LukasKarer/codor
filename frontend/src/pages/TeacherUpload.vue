@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch } from 'vue'
+import { ref, shallowRef, watch, onUnmounted } from 'vue'
 import { useMonacoTheme } from '@/composables/useMonacoTheme'
 import { useRouter } from 'vue-router'
 import {
@@ -11,8 +11,10 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Play,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,6 +34,11 @@ import type { editor as MonacoEditorType } from 'monaco-editor'
 
 interface Step extends AIStep {
   id: number
+}
+
+type LogEntry = {
+  type: 'log' | 'error' | 'warn' | 'info' | 'system'
+  content: string
 }
 
 // Decoration CSS classes injected once into the Monaco environment
@@ -70,6 +77,8 @@ const editingStep = ref<number | null>(null)
 const examSettings = ref<ExamSettings | null>(null)
 const monacoTheme = useMonacoTheme()
 
+const logs = ref<LogEntry[]>([])
+const workerRef = ref<Worker | null>(null)
 const editorRef = shallowRef<MonacoEditorType.IStandaloneCodeEditor | null>(null)
 const decorationsCollection = shallowRef<MonacoEditorType.IEditorDecorationsCollection | null>(null)
 
@@ -182,6 +191,33 @@ function handleEditorMount(editor: MonacoEditorType.IStandaloneCodeEditor) {
   decorationsCollection.value = editor.createDecorationsCollection([])
   injectDecorationStyles()
 }
+
+function handleRun() {
+  logs.value = []
+  if (workerRef.value) workerRef.value.terminate()
+
+  const worker = new Worker(new URL('../workers/codeExecutor.ts', import.meta.url), {
+    type: 'module',
+  })
+  workerRef.value = worker
+
+  worker.onmessage = (e) => {
+    const { type, level, args, message } = e.data
+    if (type === 'console') {
+      logs.value.push({ type: level, content: args.join(' ') })
+    } else if (type === 'error') {
+      logs.value.push({ type: 'error', content: `Error: ${message}` })
+    }
+  }
+  worker.onerror = (err) => {
+    logs.value.push({ type: 'error', content: `Worker Error: ${err.message}` })
+  }
+  worker.postMessage(code.value)
+}
+
+onUnmounted(() => {
+  if (workerRef.value) workerRef.value.terminate()
+})
 
 const addStep = () => {
   const newId = Math.max(...steps.value.map((s) => s.id), 0) + 1
@@ -348,29 +384,68 @@ const handleSubmit = async () => {
         </div>
 
         <div class="flex flex-1 flex-col overflow-hidden">
-          <div class="border-b border-border px-4 py-2">
+          <div class="flex items-center justify-between border-b border-border px-4 py-2">
             <span class="font-mono text-sm font-medium text-muted-foreground">
               {{ t(L.teacher.upload.solutionCode) }}
             </span>
+            <Button
+              size="sm"
+              class="h-8 gap-1.5 text-primary-foreground bg-gradient-to-br from-purple-600 to-blue-500"
+              @click="handleRun"
+            >
+              <Play class="h-4 w-4" />
+              <span class="text-xs">Run</span>
+            </Button>
           </div>
 
-          <div class="flex-1 overflow-hidden">
-            <VueMonacoEditor
-              v-model:value="code"
-              language="javascript"
-              :theme="monacoTheme"
-              :options="{
-                fontSize: 13,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                lineNumbers: 'on',
-                wordWrap: 'on',
-                automaticLayout: true,
-              }"
-              class="h-full w-full"
-              @mount="handleEditorMount"
-            />
-          </div>
+          <ResizablePanelGroup direction="vertical" class="flex-1">
+            <ResizablePanel :default-size="70" :min-size="20">
+              <div class="h-full w-full overflow-hidden">
+                <VueMonacoEditor
+                  v-model:value="code"
+                  language="javascript"
+                  :theme="monacoTheme"
+                  :options="{
+                    fontSize: 13,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    wordWrap: 'on',
+                    automaticLayout: true,
+                  }"
+                  class="h-full w-full"
+                  @mount="handleEditorMount"
+                />
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle class="h-4 bg-border transition-colors hover:bg-primary/50" />
+
+            <ResizablePanel :default-size="30" :min-size="10">
+              <div class="flex h-full flex-col border-t border-border">
+                <div class="flex items-center gap-2 border-b border-border px-4 py-2">
+                  <span class="font-mono text-xs font-medium text-muted-foreground">OUTPUT</span>
+                </div>
+                <div class="flex-1 overflow-auto p-4 font-mono text-sm scrollbar-thin">
+                  <p v-if="logs.length === 0" class="text-muted-foreground/50 italic">
+                    {{ t(L.editor.runToSeeOutput) }}
+                  </p>
+                  <p
+                    v-for="(log, i) in logs"
+                    :key="i"
+                    class="whitespace-pre-wrap"
+                    :class="{
+                      'text-red-400': log.type === 'error',
+                      'text-blue-400': log.type === 'info',
+                      'text-muted-foreground': log.type === 'log',
+                    }"
+                  >
+                    &gt; {{ log.content }}
+                  </p>
+                </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       </div>
 
