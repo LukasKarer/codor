@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch } from 'vue'
+import { useMonacoTheme } from '@/composables/useMonacoTheme'
 import { useRouter } from 'vue-router'
 import {
   Upload,
@@ -67,6 +68,7 @@ const editingStep = ref<number | null>(null)
 
 // Exam settings — managed by ExamSettingsCard component
 const examSettings = ref<ExamSettings | null>(null)
+const monacoTheme = useMonacoTheme()
 
 const editorRef = shallowRef<MonacoEditorType.IStandaloneCodeEditor | null>(null)
 const decorationsCollection = shallowRef<MonacoEditorType.IEditorDecorationsCollection | null>(null)
@@ -341,7 +343,7 @@ const handleSubmit = async () => {
             id="exercise-title"
             v-model="title"
             :placeholder="t(L.teacher.upload.exerciseTitlePlaceholder)"
-            class="mt-2"
+            class="mt-2 bg-background"
           />
         </div>
 
@@ -356,7 +358,7 @@ const handleSubmit = async () => {
             <VueMonacoEditor
               v-model:value="code"
               language="javascript"
-              theme="vs-dark"
+              :theme="monacoTheme"
               :options="{
                 fontSize: 13,
                 minimap: { enabled: false },

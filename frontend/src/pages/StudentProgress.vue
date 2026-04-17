@@ -273,14 +273,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-screen flex-col bg-[#050a1a] text-slate-100">
-    <header class="border-b border-white/10 px-6 py-4 bg-[#070e22]">
+  <div class="flex h-screen flex-col bg-background text-foreground">
+    <header class="border-b border-border px-6 py-4 bg-background">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
-            class="h-9 w-9 text-slate-200 hover:text-white hover:bg-white/10"
+            class="h-9 w-9"
             @click="router.push('/teacher')"
           >
             <ArrowLeft class="h-5 w-5" />
@@ -292,7 +292,7 @@ onMounted(async () => {
           </div>
           <div>
             <h1 class="font-semibold">{{ t(L.progress.title) }}</h1>
-            <p class="text-xs text-slate-400">{{ t(L.progress.subtitle) }}</p>
+            <p class="text-xs text-muted-foreground">{{ t(L.progress.subtitle) }}</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -304,53 +304,53 @@ onMounted(async () => {
 
     <main class="flex flex-1 overflow-hidden">
       <div v-if="isLoading" class="flex flex-1 items-center justify-center">
-        <Loader2 class="h-8 w-8 animate-spin text-blue-300" />
+        <Loader2 class="h-8 w-8 animate-spin text-primary" />
       </div>
 
       <div v-else-if="error" class="flex flex-1 items-center justify-center">
         <div class="text-center">
-          <p class="text-rose-300 mb-4">{{ error }}</p>
+          <p class="text-destructive mb-4">{{ error }}</p>
           <Button @click="loadExercises">{{ t(L.progress.retry) }}</Button>
         </div>
       </div>
 
       <div v-else-if="exercises.length === 0" class="flex flex-1 items-center justify-center">
         <div class="text-center">
-          <Code class="mx-auto h-12 w-12 text-slate-500" />
+          <Code class="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 class="mt-4 text-lg font-semibold">{{ t(L.progress.noExercises) }}</h3>
-          <p class="mt-2 text-sm text-slate-400">{{ t(L.progress.noExercisesDescription) }}</p>
+          <p class="mt-2 text-sm text-muted-foreground">{{ t(L.progress.noExercisesDescription) }}</p>
           <Button class="mt-4" @click="router.push('/teacher/upload')">{{ t(L.progress.createExercise) }}</Button>
         </div>
       </div>
 
       <template v-else>
-        <div class="w-80 border-r border-white/10 overflow-auto p-4 space-y-3">
-          <h2 class="text-sm font-semibold text-slate-400 mb-3 px-2">{{ t(L.progress.exercises) }}</h2>
+        <div class="w-80 border-r border-border overflow-auto p-4 space-y-3">
+          <h2 class="text-sm font-semibold text-muted-foreground mb-3 px-2">{{ t(L.progress.exercises) }}</h2>
           <Card
             v-for="exercise in exercises"
             :key="exercise.id"
             :class="[
-              'cursor-pointer border bg-[#09132b]/85 transition-all hover:border-blue-400/50',
+              'cursor-pointer border transition-all hover:border-blue-400/50',
               selectedExercise === exercise.id
                 ? 'border-indigo-500 shadow-[0_0_0_1px_rgba(99,102,241,0.4)]'
-                : 'border-white/10',
+                : 'border-border',
             ]"
             @click="selectedExercise = selectedExercise === exercise.id ? null : exercise.id"
           >
             <CardHeader class="pb-3">
-              <CardTitle class="text-base text-slate-100">{{ exercise.title }}</CardTitle>
-              <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
+              <CardTitle class="text-base">{{ exercise.title }}</CardTitle>
+              <CardDescription class="flex items-center gap-2 text-xs">
                 <User class="h-3 w-3" />
                 {{ exercise.submissions.filter(s => !s.isTest).length }} {{ t(L.progress.students) }}
-                <span v-if="exercise.submissions.some(s => s.isTest)" class="text-orange-300">
+                <span v-if="exercise.submissions.some(s => s.isTest)" class="text-orange-500 dark:text-orange-300">
                   + {{ exercise.submissions.filter(s => s.isTest).length }} {{ t(L.progress.test) }}
                 </span>
               </CardDescription>
             </CardHeader>
             <CardContent class="pt-0">
-              <div class="flex items-center justify-between text-xs text-slate-400">
+              <div class="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{{ t(L.progress.completed) }}</span>
-                <span class="font-semibold text-indigo-300">
+                <span class="font-semibold text-indigo-500 dark:text-indigo-300">
                   {{ exercise.submissions.filter((s) => s.status === 'completed').length }}/{{
                     exercise.submissions.length
                   }}
@@ -360,14 +360,14 @@ onMounted(async () => {
           </Card>
         </div>
 
-        <div v-if="selectedExerciseData" class="w-96 border-r border-white/10 overflow-auto p-4 space-y-3">
-          <h2 class="text-sm font-semibold text-slate-400 mb-3 px-2">{{ t(L.progress.studentsLabel) }}</h2>
+        <div v-if="selectedExerciseData" class="w-96 border-r border-border overflow-auto p-4 space-y-3">
+          <h2 class="text-sm font-semibold text-muted-foreground mb-3 px-2">{{ t(L.progress.studentsLabel) }}</h2>
           <Card
             v-for="submission in selectedExerciseData.submissions"
             :key="submission.studentId"
             :class="[
               'cursor-pointer border transition-all',
-              submission.isTest ? 'bg-orange-950/20 border-orange-500/30' : 'bg-[#09132b]/85 border-white/10',
+              submission.isTest ? 'bg-orange-50 border-orange-300 dark:bg-orange-950/20 dark:border-orange-500/30' : 'border-border',
               selectedStudent === submission.studentId
                 ? 'border-indigo-500 shadow-[0_0_0_1px_rgba(99,102,241,0.4)]'
                 : 'hover:border-blue-400/40',
@@ -376,10 +376,10 @@ onMounted(async () => {
           >
             <CardHeader>
               <div class="flex items-start justify-between gap-2">
-                <CardTitle class="text-base truncate flex items-start gap-1.5 text-slate-100">
+                <CardTitle class="text-base truncate flex items-start gap-1.5">
                   <FlaskConical
                     v-if="submission.isTest"
-                    class="h-3.5 w-3.5 flex-shrink-0 text-orange-300"
+                    class="h-3.5 w-3.5 flex-shrink-0 text-orange-500 dark:text-orange-300"
                   />
                   {{ submission.studentName }}
                 </CardTitle>
@@ -394,14 +394,14 @@ onMounted(async () => {
                   </span>
                   <span
                     v-if="submission.hasTeacherFeedback"
-                    class="rounded-full border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400 whitespace-nowrap"
+                    class="rounded-full border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap"
                   >
                     {{ t(L.progress.feedback) }}
                   </span>
                 </div>
               </div>
             </CardHeader>
-            <CardContent class="pt-0 space-y-2 text-slate-300">
+            <CardContent class="pt-0 space-y-2 text-muted-foreground">
               <div class="flex items-center gap-2 text-xs">
                 <Clock class="h-3 w-3" />
                 {{ submission.timeSpentMinutes }} {{ t(L.progress.min) }}
@@ -411,7 +411,7 @@ onMounted(async () => {
                 {{ submission.aiInteractionsCount }} {{ t(L.progress.aiChats) }}
               </div>
               <div v-if="submission.score !== null" class="flex items-center gap-2 text-xs">
-                <Award class="h-3 w-3 text-indigo-300" />
+                <Award class="h-3 w-3 text-indigo-500 dark:text-indigo-300" />
                 <span :class="['font-semibold', getScoreColor(submission.score)]">
                   {{ submission.score }}%
                 </span>
@@ -425,15 +425,15 @@ onMounted(async () => {
             <div class="flex items-center justify-between gap-3">
               <div>
                 <div class="flex items-center gap-2">
-                  <h2 class="text-2xl font-bold text-slate-100">{{ selectedStudentData.studentName }}</h2>
+                  <h2 class="text-2xl font-bold text-foreground">{{ selectedStudentData.studentName }}</h2>
                   <span
                     v-if="selectedStudentData.isTest"
-                    class="rounded-full border border-orange-400/60 bg-orange-500/20 px-2 py-0.5 text-xs font-semibold text-orange-300"
+                    class="rounded-full border border-orange-400/60 bg-orange-500/20 px-2 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-300"
                   >
                     {{ t(L.progress.testSession) }}
                   </span>
                 </div>
-                <p class="text-slate-400 text-lg">{{ selectedExerciseData?.title }}</p>
+                <p class="text-muted-foreground text-lg">{{ selectedExerciseData?.title }}</p>
               </div>
               <Button
                 class="bg-gradient-to-r from-indigo-500 to-blue-500 text-white"
@@ -447,31 +447,31 @@ onMounted(async () => {
             </div>
 
             <div class="grid gap-4 md:grid-cols-3">
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader class="pb-3">
-                  <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
+                  <CardDescription class="flex items-center gap-2 text-xs">
                     <Clock class="h-4 w-4" />
                     {{ t(L.progress.timeSpent) }}
                   </CardDescription>
-                  <CardTitle class="text-2xl text-slate-100">
+                  <CardTitle class="text-2xl">
                     {{ selectedStudentDetail?.time_spent_minutes ?? selectedStudentData.timeSpentMinutes }} {{ t(L.progress.min) }}
                   </CardTitle>
                 </CardHeader>
               </Card>
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader class="pb-3">
-                  <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
+                  <CardDescription class="flex items-center gap-2 text-xs">
                     <MessageSquare class="h-4 w-4" />
                     {{ t(L.progress.aiInteractions) }}
                   </CardDescription>
-                  <CardTitle class="text-2xl text-slate-100">
+                  <CardTitle class="text-2xl">
                     {{ selectedStudentDetail?.ai_interactions_count ?? selectedStudentData.aiInteractionsCount }}
                   </CardTitle>
                 </CardHeader>
               </Card>
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader class="pb-3">
-                  <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
+                  <CardDescription class="flex items-center gap-2 text-xs">
                     <Award class="h-4 w-4" />
                     {{ t(L.progress.score) }}
                   </CardDescription>
@@ -483,12 +483,12 @@ onMounted(async () => {
               </Card>
             </div>
 
-            <div v-if="isLoadingDetail" class="flex items-center gap-2 text-slate-300">
+            <div v-if="isLoadingDetail" class="flex items-center gap-2 text-muted-foreground">
               <Loader2 class="h-4 w-4 animate-spin" />
               {{ t(L.progress.loadingDetails) }}
             </div>
 
-            <div v-else-if="detailError" class="rounded-lg border border-rose-400/40 bg-rose-950/20 p-4 text-rose-200">
+            <div v-else-if="detailError" class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-destructive">
               {{ detailError }}
             </div>
 
@@ -498,20 +498,20 @@ onMounted(async () => {
                 :initial-feedback="selectedStudentDetail?.teacher_feedback || ''"
                 @saved="handleTeacherFeedbackSaved"
               />
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader>
-                  <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
-                    <MessageSquare class="h-6 w-6 text-indigo-300" />
+                  <CardTitle class="flex items-center gap-2 text-2xl">
+                    <MessageSquare class="h-6 w-6 text-indigo-500 dark:text-indigo-300" />
                     {{ t(L.progress.aiInteractionsTitle) }}
                   </CardTitle>
-                  <CardDescription class="text-slate-400 text-lg">
+                  <CardDescription class="text-lg">
                     {{ t(L.progress.aiInteractionsDescription) }}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div
                     v-if="selectedStudentReport?.ai_interactions?.length"
-                    class="space-y-4 text-slate-200"
+                    class="space-y-4"
                   >
                     <div
                       v-for="(item, idx) in selectedStudentReport.ai_interactions"
@@ -519,7 +519,7 @@ onMounted(async () => {
                       class="flex items-start gap-3"
                     >
                       <span
-                        class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/30 text-xs font-semibold text-indigo-200"
+                        class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-semibold text-indigo-600 dark:text-indigo-200"
                       >
                         {{ idx + 1 }}
                       </span>
@@ -528,32 +528,32 @@ onMounted(async () => {
                   </div>
                   <div
                     v-else-if="selectedStudentDetail?.conversations?.length"
-                    class="space-y-4 text-slate-200"
+                    class="space-y-4"
                   >
                     <div
                       v-for="(item, idx) in selectedStudentDetail.conversations"
                       :key="item.id"
-                      class="rounded-md border border-white/10 bg-white/5 p-3"
+                      class="rounded-md border border-border bg-muted/40 p-3"
                     >
-                      <p class="text-xs uppercase tracking-wide text-slate-400 mb-1">{{ item.prompt_type }}</p>
-                      <p v-if="item.user_message" class="text-sm text-slate-300">Q: {{ item.user_message }}</p>
-                      <p class="text-sm text-slate-100">A: {{ item.assistant_message }}</p>
+                      <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">{{ item.prompt_type }}</p>
+                      <p v-if="item.user_message" class="text-sm text-muted-foreground">Q: {{ item.user_message }}</p>
+                      <p class="text-sm text-foreground">A: {{ item.assistant_message }}</p>
                     </div>
-                    <p class="text-xs text-slate-400">{{ t(L.progress.aiInteractionsNote) }}</p>
+                    <p class="text-xs text-muted-foreground">{{ t(L.progress.aiInteractionsNote) }}</p>
                   </div>
-                  <p v-else class="text-sm text-slate-400">
+                  <p v-else class="text-sm text-muted-foreground">
                     {{ t(L.progress.noAiInteractions) }}
                   </p>
                 </CardContent>
               </Card>
 
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader>
-                  <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
-                    <AlertCircle class="h-6 w-6 text-rose-300" />
+                  <CardTitle class="flex items-center gap-2 text-2xl">
+                    <AlertCircle class="h-6 w-6 text-rose-500 dark:text-rose-300" />
                     {{ t(L.progress.scoreDeductions) }}
                   </CardTitle>
-                  <CardDescription class="text-slate-400 text-lg">
+                  <CardDescription class="text-lg">
                     {{ t(L.progress.scoreDeductionsDescription) }}
                   </CardDescription>
                 </CardHeader>
@@ -565,11 +565,11 @@ onMounted(async () => {
                     <div
                       v-for="(deduction, idx) in selectedStudentReport.score_deductions"
                       :key="`deduction-${idx}`"
-                      class="flex items-center justify-between rounded-md border border-rose-500/40 bg-rose-950/20 px-3 py-3 text-rose-100"
+                      class="flex items-center justify-between rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-3 text-rose-700 dark:text-rose-100"
                     >
                       <div class="flex items-center gap-3">
                         <span
-                          class="flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/30 text-xs font-semibold"
+                          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-500/30 text-xs font-semibold"
                         >
                           {{ idx + 1 }}
                         </span>
@@ -577,9 +577,9 @@ onMounted(async () => {
                       </div>
                       <span class="font-semibold">-{{ deduction.points }} {{ t(L.progress.pts) }}</span>
                     </div>
-                    <div class="mt-3 flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-3 text-slate-100">
+                    <div class="mt-3 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-3">
                       <span class="font-semibold">{{ t(L.progress.totalPointsLost) }}</span>
-                      <span class="font-semibold text-rose-300">-
+                      <span class="font-semibold text-rose-500 dark:text-rose-300">-
                         {{
                           selectedStudentReport.total_points_lost ??
                           selectedStudentReport.score_deductions.reduce((sum, d) => sum + d.points, 0)
@@ -588,7 +588,7 @@ onMounted(async () => {
                       </span>
                     </div>
                   </div>
-                  <p v-else class="text-sm text-slate-400">
+                  <p v-else class="text-sm text-muted-foreground">
                     {{ t(L.progress.noReport) }}
                   </p>
                 </CardContent>
@@ -599,8 +599,8 @@ onMounted(async () => {
           <div v-else class="mx-auto max-w-4xl space-y-6">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h2 class="text-3xl font-bold text-slate-100">{{ t(L.progress.exerciseReport) }}</h2>
-                <p class="text-slate-400">{{ t(L.progress.exerciseReportDescription) }}</p>
+                <h2 class="text-3xl font-bold text-foreground">{{ t(L.progress.exerciseReport) }}</h2>
+                <p class="text-muted-foreground">{{ t(L.progress.exerciseReportDescription) }}</p>
               </div>
               <Button
                 class="bg-gradient-to-r from-indigo-500 to-blue-500 text-white"
@@ -613,50 +613,50 @@ onMounted(async () => {
               </Button>
             </div>
 
-            <div v-if="exerciseReportError" class="rounded-lg border border-rose-400/40 bg-rose-950/20 p-4 text-rose-200">
+            <div v-if="exerciseReportError" class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-destructive">
               {{ exerciseReportError }}
             </div>
 
             <template v-else-if="exerciseReport">
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader>
-                  <CardTitle class="text-2xl text-slate-100">{{ t(L.progress.overview) }}</CardTitle>
+                  <CardTitle class="text-2xl">{{ t(L.progress.overview) }}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p class="text-slate-200">{{ exerciseReport.overview }}</p>
+                  <p>{{ exerciseReport.overview }}</p>
                 </CardContent>
               </Card>
 
               <div class="grid gap-4 md:grid-cols-3">
-                <Card class="border-white/10 bg-[#09132b]/85">
+                <Card class="border-border">
                   <CardHeader class="pb-2">
-                    <CardDescription class="text-slate-400">{{ t(L.progress.averageScore) }}</CardDescription>
-                    <CardTitle class="text-3xl text-slate-100">{{ exerciseReport.score_distribution.avg }}%</CardTitle>
+                    <CardDescription>{{ t(L.progress.averageScore) }}</CardDescription>
+                    <CardTitle class="text-3xl">{{ exerciseReport.score_distribution.avg }}%</CardTitle>
                   </CardHeader>
                 </Card>
-                <Card class="border-white/10 bg-[#09132b]/85">
+                <Card class="border-border">
                   <CardHeader class="pb-2">
-                    <CardDescription class="text-slate-400">{{ t(L.progress.lowestScore) }}</CardDescription>
-                    <CardTitle class="text-3xl text-rose-300">{{ exerciseReport.score_distribution.min }}%</CardTitle>
+                    <CardDescription>{{ t(L.progress.lowestScore) }}</CardDescription>
+                    <CardTitle class="text-3xl text-rose-500 dark:text-rose-300">{{ exerciseReport.score_distribution.min }}%</CardTitle>
                   </CardHeader>
                 </Card>
-                <Card class="border-white/10 bg-[#09132b]/85">
+                <Card class="border-border">
                   <CardHeader class="pb-2">
-                    <CardDescription class="text-slate-400">{{ t(L.progress.highestScore) }}</CardDescription>
-                    <CardTitle class="text-3xl text-green-300">{{ exerciseReport.score_distribution.max }}%</CardTitle>
+                    <CardDescription>{{ t(L.progress.highestScore) }}</CardDescription>
+                    <CardTitle class="text-3xl text-green-600 dark:text-green-300">{{ exerciseReport.score_distribution.max }}%</CardTitle>
                   </CardHeader>
                 </Card>
               </div>
 
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader>
-                  <CardTitle class="flex items-center gap-2 text-slate-100">
-                    <CheckCircle2 class="h-5 w-5 text-green-300" />
+                  <CardTitle class="flex items-center gap-2">
+                    <CheckCircle2 class="h-5 w-5 text-green-600 dark:text-green-300" />
                     {{ t(L.progress.classStrengths) }}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul class="space-y-2 text-slate-200">
+                  <ul class="space-y-2">
                     <li v-for="(item, idx) in exerciseReport.class_strengths" :key="`strength-${idx}`">
                       - {{ item }}
                     </li>
@@ -664,15 +664,15 @@ onMounted(async () => {
                 </CardContent>
               </Card>
 
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader>
-                  <CardTitle class="flex items-center gap-2 text-slate-100">
-                    <AlertCircle class="h-5 w-5 text-amber-300" />
+                  <CardTitle class="flex items-center gap-2">
+                    <AlertCircle class="h-5 w-5 text-amber-500 dark:text-amber-300" />
                     {{ t(L.progress.classImprovements) }}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul class="space-y-2 text-slate-200">
+                  <ul class="space-y-2">
                     <li v-for="(item, idx) in exerciseReport.class_improvements" :key="`improvement-${idx}`">
                       - {{ item }}
                     </li>
@@ -680,18 +680,18 @@ onMounted(async () => {
                 </CardContent>
               </Card>
 
-              <Card class="border-white/10 bg-[#09132b]/85">
+              <Card class="border-border">
                 <CardHeader>
-                  <CardTitle class="text-slate-100">{{ t(L.progress.perStudentHighlights) }}</CardTitle>
+                  <CardTitle>{{ t(L.progress.perStudentHighlights) }}</CardTitle>
                 </CardHeader>
                 <CardContent class="space-y-2">
                   <div
                     v-for="(item, idx) in exerciseReport.per_student_highlights"
                     :key="`highlight-${idx}`"
-                    class="rounded-md border border-white/10 bg-white/5 p-3"
+                    class="rounded-md border border-border bg-muted/40 p-3"
                   >
-                    <p class="text-sm text-slate-200">
-                      <span class="font-semibold text-slate-100">{{ item.student_sub }}</span>
+                    <p class="text-sm">
+                      <span class="font-semibold">{{ item.student_sub }}</span>
                       ({{ item.score }}%) - {{ item.highlight }}
                     </p>
                   </div>
@@ -701,9 +701,9 @@ onMounted(async () => {
 
             <div v-else class="flex h-[50vh] items-center justify-center">
               <div class="text-center">
-                <User class="mx-auto h-12 w-12 text-slate-500" />
-                <h3 class="mt-4 text-lg font-semibold text-slate-100">{{ t(L.progress.noStudentSelected) }}</h3>
-                <p class="mt-2 text-sm text-slate-400">{{ t(L.progress.noStudentSelectedDescription) }}</p>
+                <User class="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 class="mt-4 text-lg font-semibold">{{ t(L.progress.noStudentSelected) }}</h3>
+                <p class="mt-2 text-sm text-muted-foreground">{{ t(L.progress.noStudentSelectedDescription) }}</p>
               </div>
             </div>
           </div>
