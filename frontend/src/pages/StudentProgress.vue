@@ -18,7 +18,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
 import TeacherFeedbackCard from '@/components/TeacherFeedbackCard.vue'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { toast } from 'vue-sonner'
 import {
   getExerciseInfo,
@@ -54,6 +57,7 @@ interface Exercise {
   submissions: StudentSubmission[]
 }
 
+const { t } = useI18n()
 const router = useRouter()
 const selectedExercise = ref<string | null>(null)
 const selectedStudent = ref<string | null>(null)
@@ -287,11 +291,14 @@ onMounted(async () => {
             <Code class="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 class="font-semibold">Student Progress</h1>
-            <p class="text-xs text-slate-400">Track and analyze student performance</p>
+            <h1 class="font-semibold">{{ t(L.progress.title) }}</h1>
+            <p class="text-xs text-slate-400">{{ t(L.progress.subtitle) }}</p>
           </div>
         </div>
-        <ThemeToggle />
+        <div class="flex items-center gap-2">
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
       </div>
     </header>
 
@@ -303,22 +310,22 @@ onMounted(async () => {
       <div v-else-if="error" class="flex flex-1 items-center justify-center">
         <div class="text-center">
           <p class="text-rose-300 mb-4">{{ error }}</p>
-          <Button @click="loadExercises">Retry</Button>
+          <Button @click="loadExercises">{{ t(L.progress.retry) }}</Button>
         </div>
       </div>
 
       <div v-else-if="exercises.length === 0" class="flex flex-1 items-center justify-center">
         <div class="text-center">
           <Code class="mx-auto h-12 w-12 text-slate-500" />
-          <h3 class="mt-4 text-lg font-semibold">No exercises found</h3>
-          <p class="mt-2 text-sm text-slate-400">Create an exercise first to view student progress</p>
-          <Button class="mt-4" @click="router.push('/teacher/upload')">Create Exercise</Button>
+          <h3 class="mt-4 text-lg font-semibold">{{ t(L.progress.noExercises) }}</h3>
+          <p class="mt-2 text-sm text-slate-400">{{ t(L.progress.noExercisesDescription) }}</p>
+          <Button class="mt-4" @click="router.push('/teacher/upload')">{{ t(L.progress.createExercise) }}</Button>
         </div>
       </div>
 
       <template v-else>
         <div class="w-80 border-r border-white/10 overflow-auto p-4 space-y-3">
-          <h2 class="text-sm font-semibold text-slate-400 mb-3 px-2">EXERCISES</h2>
+          <h2 class="text-sm font-semibold text-slate-400 mb-3 px-2">{{ t(L.progress.exercises) }}</h2>
           <Card
             v-for="exercise in exercises"
             :key="exercise.id"
@@ -334,15 +341,15 @@ onMounted(async () => {
               <CardTitle class="text-base text-slate-100">{{ exercise.title }}</CardTitle>
               <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
                 <User class="h-3 w-3" />
-                {{ exercise.submissions.filter(s => !s.isTest).length }} students
+                {{ exercise.submissions.filter(s => !s.isTest).length }} {{ t(L.progress.students) }}
                 <span v-if="exercise.submissions.some(s => s.isTest)" class="text-orange-300">
-                  + {{ exercise.submissions.filter(s => s.isTest).length }} test
+                  + {{ exercise.submissions.filter(s => s.isTest).length }} {{ t(L.progress.test) }}
                 </span>
               </CardDescription>
             </CardHeader>
             <CardContent class="pt-0">
               <div class="flex items-center justify-between text-xs text-slate-400">
-                <span>Completed</span>
+                <span>{{ t(L.progress.completed) }}</span>
                 <span class="font-semibold text-indigo-300">
                   {{ exercise.submissions.filter((s) => s.status === 'completed').length }}/{{
                     exercise.submissions.length
@@ -354,7 +361,7 @@ onMounted(async () => {
         </div>
 
         <div v-if="selectedExerciseData" class="w-96 border-r border-white/10 overflow-auto p-4 space-y-3">
-          <h2 class="text-sm font-semibold text-slate-400 mb-3 px-2">STUDENTS</h2>
+          <h2 class="text-sm font-semibold text-slate-400 mb-3 px-2">{{ t(L.progress.studentsLabel) }}</h2>
           <Card
             v-for="submission in selectedExerciseData.submissions"
             :key="submission.studentId"
@@ -388,9 +395,8 @@ onMounted(async () => {
                   <span
                     v-if="submission.hasTeacherFeedback"
                     class="rounded-full border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400 whitespace-nowrap"
-                    title="Teacher feedback provided"
                   >
-                    Feedback
+                    {{ t(L.progress.feedback) }}
                   </span>
                 </div>
               </div>
@@ -398,11 +404,11 @@ onMounted(async () => {
             <CardContent class="pt-0 space-y-2 text-slate-300">
               <div class="flex items-center gap-2 text-xs">
                 <Clock class="h-3 w-3" />
-                {{ submission.timeSpentMinutes }} min
+                {{ submission.timeSpentMinutes }} {{ t(L.progress.min) }}
               </div>
               <div class="flex items-center gap-2 text-xs">
                 <MessageSquare class="h-3 w-3" />
-                {{ submission.aiInteractionsCount }} AI chats
+                {{ submission.aiInteractionsCount }} {{ t(L.progress.aiChats) }}
               </div>
               <div v-if="submission.score !== null" class="flex items-center gap-2 text-xs">
                 <Award class="h-3 w-3 text-indigo-300" />
@@ -424,7 +430,7 @@ onMounted(async () => {
                     v-if="selectedStudentData.isTest"
                     class="rounded-full border border-orange-400/60 bg-orange-500/20 px-2 py-0.5 text-xs font-semibold text-orange-300"
                   >
-                    TEST SESSION
+                    {{ t(L.progress.testSession) }}
                   </span>
                 </div>
                 <p class="text-slate-400 text-lg">{{ selectedExerciseData?.title }}</p>
@@ -436,7 +442,7 @@ onMounted(async () => {
               >
                 <Loader2 v-if="isGeneratingStudentReport" class="mr-2 h-4 w-4 animate-spin" />
                 <Sparkles v-else class="mr-2 h-4 w-4" />
-                Generate Report
+                {{ t(L.progress.generateReport) }}
               </Button>
             </div>
 
@@ -445,10 +451,10 @@ onMounted(async () => {
                 <CardHeader class="pb-3">
                   <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
                     <Clock class="h-4 w-4" />
-                    Time Spent
+                    {{ t(L.progress.timeSpent) }}
                   </CardDescription>
                   <CardTitle class="text-2xl text-slate-100">
-                    {{ selectedStudentDetail?.time_spent_minutes ?? selectedStudentData.timeSpentMinutes }} min
+                    {{ selectedStudentDetail?.time_spent_minutes ?? selectedStudentData.timeSpentMinutes }} {{ t(L.progress.min) }}
                   </CardTitle>
                 </CardHeader>
               </Card>
@@ -456,7 +462,7 @@ onMounted(async () => {
                 <CardHeader class="pb-3">
                   <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
                     <MessageSquare class="h-4 w-4" />
-                    AI Interactions
+                    {{ t(L.progress.aiInteractions) }}
                   </CardDescription>
                   <CardTitle class="text-2xl text-slate-100">
                     {{ selectedStudentDetail?.ai_interactions_count ?? selectedStudentData.aiInteractionsCount }}
@@ -467,7 +473,7 @@ onMounted(async () => {
                 <CardHeader class="pb-3">
                   <CardDescription class="flex items-center gap-2 text-xs text-slate-400">
                     <Award class="h-4 w-4" />
-                    Score
+                    {{ t(L.progress.score) }}
                   </CardDescription>
                   <CardTitle :class="['text-2xl', getScoreColor(selectedStudentReport?.score ?? selectedStudentData.score)]">
                     {{ selectedStudentReport?.score ?? selectedStudentData.score ?? 'N/A' }}
@@ -479,7 +485,7 @@ onMounted(async () => {
 
             <div v-if="isLoadingDetail" class="flex items-center gap-2 text-slate-300">
               <Loader2 class="h-4 w-4 animate-spin" />
-              Loading student details...
+              {{ t(L.progress.loadingDetails) }}
             </div>
 
             <div v-else-if="detailError" class="rounded-lg border border-rose-400/40 bg-rose-950/20 p-4 text-rose-200">
@@ -496,10 +502,10 @@ onMounted(async () => {
                 <CardHeader>
                   <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
                     <MessageSquare class="h-6 w-6 text-indigo-300" />
-                    AI Tutor Interactions
+                    {{ t(L.progress.aiInteractionsTitle) }}
                   </CardTitle>
                   <CardDescription class="text-slate-400 text-lg">
-                    Questions and topics discussed with the AI tutor
+                    {{ t(L.progress.aiInteractionsDescription) }}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -533,10 +539,10 @@ onMounted(async () => {
                       <p v-if="item.user_message" class="text-sm text-slate-300">Q: {{ item.user_message }}</p>
                       <p class="text-sm text-slate-100">A: {{ item.assistant_message }}</p>
                     </div>
-                    <p class="text-xs text-slate-400">These are raw stored conversations. They are summarized when you generate the student report.</p>
+                    <p class="text-xs text-slate-400">{{ t(L.progress.aiInteractionsNote) }}</p>
                   </div>
                   <p v-else class="text-sm text-slate-400">
-                    No AI interactions yet.
+                    {{ t(L.progress.noAiInteractions) }}
                   </p>
                 </CardContent>
               </Card>
@@ -545,10 +551,10 @@ onMounted(async () => {
                 <CardHeader>
                   <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
                     <AlertCircle class="h-6 w-6 text-rose-300" />
-                    Score Deductions
+                    {{ t(L.progress.scoreDeductions) }}
                   </CardTitle>
                   <CardDescription class="text-slate-400 text-lg">
-                    Reasons why points were deducted from the final score
+                    {{ t(L.progress.scoreDeductionsDescription) }}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -569,21 +575,21 @@ onMounted(async () => {
                         </span>
                         <span>{{ deduction.reason }}</span>
                       </div>
-                      <span class="font-semibold">-{{ deduction.points }} pts</span>
+                      <span class="font-semibold">-{{ deduction.points }} {{ t(L.progress.pts) }}</span>
                     </div>
                     <div class="mt-3 flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-3 text-slate-100">
-                      <span class="font-semibold">Total Points Lost</span>
+                      <span class="font-semibold">{{ t(L.progress.totalPointsLost) }}</span>
                       <span class="font-semibold text-rose-300">-
                         {{
                           selectedStudentReport.total_points_lost ??
                           selectedStudentReport.score_deductions.reduce((sum, d) => sum + d.points, 0)
                         }}
-                        pts
+                        {{ t(L.progress.pts) }}
                       </span>
                     </div>
                   </div>
                   <p v-else class="text-sm text-slate-400">
-                    Generate the student report to calculate AI scoring and deductions.
+                    {{ t(L.progress.noReport) }}
                   </p>
                 </CardContent>
               </Card>
@@ -593,8 +599,8 @@ onMounted(async () => {
           <div v-else class="mx-auto max-w-4xl space-y-6">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h2 class="text-3xl font-bold text-slate-100">Exercise Report</h2>
-                <p class="text-slate-400">Generate insights across all student reports for this exercise.</p>
+                <h2 class="text-3xl font-bold text-slate-100">{{ t(L.progress.exerciseReport) }}</h2>
+                <p class="text-slate-400">{{ t(L.progress.exerciseReportDescription) }}</p>
               </div>
               <Button
                 class="bg-gradient-to-r from-indigo-500 to-blue-500 text-white"
@@ -603,7 +609,7 @@ onMounted(async () => {
               >
                 <Loader2 v-if="isGeneratingExerciseReport" class="mr-2 h-4 w-4 animate-spin" />
                 <ClipboardList v-else class="mr-2 h-4 w-4" />
-                Generate Report
+                {{ t(L.progress.generateReport) }}
               </Button>
             </div>
 
@@ -614,7 +620,7 @@ onMounted(async () => {
             <template v-else-if="exerciseReport">
               <Card class="border-white/10 bg-[#09132b]/85">
                 <CardHeader>
-                  <CardTitle class="text-2xl text-slate-100">Overview</CardTitle>
+                  <CardTitle class="text-2xl text-slate-100">{{ t(L.progress.overview) }}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p class="text-slate-200">{{ exerciseReport.overview }}</p>
@@ -624,19 +630,19 @@ onMounted(async () => {
               <div class="grid gap-4 md:grid-cols-3">
                 <Card class="border-white/10 bg-[#09132b]/85">
                   <CardHeader class="pb-2">
-                    <CardDescription class="text-slate-400">Average Score</CardDescription>
+                    <CardDescription class="text-slate-400">{{ t(L.progress.averageScore) }}</CardDescription>
                     <CardTitle class="text-3xl text-slate-100">{{ exerciseReport.score_distribution.avg }}%</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card class="border-white/10 bg-[#09132b]/85">
                   <CardHeader class="pb-2">
-                    <CardDescription class="text-slate-400">Lowest Score</CardDescription>
+                    <CardDescription class="text-slate-400">{{ t(L.progress.lowestScore) }}</CardDescription>
                     <CardTitle class="text-3xl text-rose-300">{{ exerciseReport.score_distribution.min }}%</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card class="border-white/10 bg-[#09132b]/85">
                   <CardHeader class="pb-2">
-                    <CardDescription class="text-slate-400">Highest Score</CardDescription>
+                    <CardDescription class="text-slate-400">{{ t(L.progress.highestScore) }}</CardDescription>
                     <CardTitle class="text-3xl text-green-300">{{ exerciseReport.score_distribution.max }}%</CardTitle>
                   </CardHeader>
                 </Card>
@@ -646,7 +652,7 @@ onMounted(async () => {
                 <CardHeader>
                   <CardTitle class="flex items-center gap-2 text-slate-100">
                     <CheckCircle2 class="h-5 w-5 text-green-300" />
-                    Class Strengths
+                    {{ t(L.progress.classStrengths) }}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -662,7 +668,7 @@ onMounted(async () => {
                 <CardHeader>
                   <CardTitle class="flex items-center gap-2 text-slate-100">
                     <AlertCircle class="h-5 w-5 text-amber-300" />
-                    Class Improvements
+                    {{ t(L.progress.classImprovements) }}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -676,7 +682,7 @@ onMounted(async () => {
 
               <Card class="border-white/10 bg-[#09132b]/85">
                 <CardHeader>
-                  <CardTitle class="text-slate-100">Per Student Highlights</CardTitle>
+                  <CardTitle class="text-slate-100">{{ t(L.progress.perStudentHighlights) }}</CardTitle>
                 </CardHeader>
                 <CardContent class="space-y-2">
                   <div
@@ -696,8 +702,8 @@ onMounted(async () => {
             <div v-else class="flex h-[50vh] items-center justify-center">
               <div class="text-center">
                 <User class="mx-auto h-12 w-12 text-slate-500" />
-                <h3 class="mt-4 text-lg font-semibold text-slate-100">No student selected</h3>
-                <p class="mt-2 text-sm text-slate-400">Select a student for a personal report, or generate an exercise report here.</p>
+                <h3 class="mt-4 text-lg font-semibold text-slate-100">{{ t(L.progress.noStudentSelected) }}</h3>
+                <p class="mt-2 text-sm text-slate-400">{{ t(L.progress.noStudentSelectedDescription) }}</p>
               </div>
             </div>
           </div>

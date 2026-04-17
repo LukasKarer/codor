@@ -76,6 +76,16 @@ const SYSTEM_PROMPT = `You are a friendly and patient programming tutor helping 
 
 When explaining code, always use the highlight_code tool to show the specific lines you're discussing.`;
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  de: 'German',
+  en: 'English',
+};
+
+function languageInstruction(language: string | undefined): string {
+  const name = LANGUAGE_NAMES[language ?? ''] ?? 'German';
+  return `\n\nIMPORTANT: Always respond in ${name}.`;
+}
+
 // ─── SSE helpers ───────────────────────────────────────────────────────────
 
 function initSSE(res: Response) {
@@ -122,9 +132,10 @@ function extractToolCallArgs<T>(response: Record<string, unknown>, expectedToolN
  * SSE events: text, function_call, done, error
  */
 router.post('/ai/chat', async (req: Request, res: Response) => {
-  const { messages, currentCode } = req.body as {
+  const { messages, currentCode, language } = req.body as {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     currentCode: string;
+    language?: string;
   };
 
   initSSE(res);
@@ -133,7 +144,7 @@ router.post('/ai/chat', async (req: Request, res: Response) => {
     const chatMessages = [
       {
         role: 'system' as const,
-        content: `${SYSTEM_PROMPT}\n\nCurrent code in the editor:\n\`\`\`javascript\n${currentCode}\n\`\`\``,
+        content: `${SYSTEM_PROMPT}${languageInstruction(language)}\n\nCurrent code in the editor:\n\`\`\`javascript\n${currentCode}\n\`\`\``,
       },
       ...messages.map((msg) => ({
         role: msg.role,
@@ -174,16 +185,17 @@ router.post('/ai/chat', async (req: Request, res: Response) => {
  * SSE events: text, function_call, done, error
  */
 router.post('/ai/explain-step', async (req: Request, res: Response) => {
-  const { step, code, exerciseDescription } = req.body as {
+  const { step, code, exerciseDescription, language } = req.body as {
     step: { description: string; lineStart: number; lineEnd: number };
     code: string;
     exerciseDescription: string;
+    language?: string;
   };
 
   initSSE(res);
 
   try {
-    const prompt = `You are a friendly programming tutor. A student is working on this exercise:
+    const prompt = `You are a friendly programming tutor. A student is working on this exercise:${languageInstruction(language)}
 
 "${exerciseDescription}"
 
@@ -235,10 +247,11 @@ Start by calling highlight_code, then give your explanation.`;
  * SSE events: text, function_call, done, error
  */
 router.post('/ai/get-help', async (req: Request, res: Response) => {
-  const { code, exerciseDescription, tasksOutline } = req.body as {
+  const { code, exerciseDescription, tasksOutline, language } = req.body as {
     code: string;
     exerciseDescription: string;
     tasksOutline: Array<{ description: string; lineStart: number; lineEnd: number }>;
+    language?: string;
   };
 
   initSSE(res);
@@ -248,7 +261,7 @@ router.post('/ai/get-help', async (req: Request, res: Response) => {
       .map((task, idx) => `${idx + 1}. ${task.description} (Lines ${task.lineStart}-${task.lineEnd})`)
       .join('\n');
 
-    const prompt = `You are a helpful programming tutor. A student is working on this exercise:
+    const prompt = `You are a helpful programming tutor. A student is working on this exercise:${languageInstruction(language)}
 
 "${exerciseDescription}"
 

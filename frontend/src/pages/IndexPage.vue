@@ -10,7 +10,10 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import CodeEditor from '@/components/CodeEditor.vue'
 import ChatWindow from '@/components/ChatWindow.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
 import { Button } from '@/components/ui/button'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
 import { useExerciseStore } from '@/stores/exercise'
@@ -28,6 +31,7 @@ import type { ExamSettings } from '@/lib/api'
 import { TIMER_URGENT_THRESHOLD_SECONDS } from '@/components/exam/constants'
 import { supabase } from '@/lib/supabase'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const exerciseStore = useExerciseStore()
 const route = useRoute()
@@ -35,7 +39,7 @@ const router = useRouter()
 
 const isLoading = ref(true)
 const error = ref<string | null>(null)
-const exerciseTitle = ref('Lesson')
+const exerciseTitle = ref('')
 
 // Student dashboard state
 const showStudentDashboard = ref(false)
@@ -325,13 +329,13 @@ onMounted(() => {
   >
     <Card class="w-96">
       <CardHeader>
-        <CardTitle class="text-destructive">Error</CardTitle>
+        <CardTitle class="text-destructive">{{ t(L.student.error) }}</CardTitle>
       </CardHeader>
       <CardContent class="space-y-3">
         <p class="text-sm text-muted-foreground">{{ error }}</p>
         <Button variant="outline" class="w-full" @click="loadExercise()">
           <X class="mr-2 h-4 w-4" />
-          Try again
+          {{ t(L.student.tryAgain) }}
         </Button>
       </CardContent>
     </Card>
@@ -351,8 +355,8 @@ onMounted(() => {
           <Code class="h-5 w-5 text-white" />
         </div>
         <div>
-          <h1 class="font-semibold text-foreground">CodeMentor</h1>
-          <p class="text-xs text-muted-foreground">Interactive Programming Tutor</p>
+          <h1 class="font-semibold text-foreground">{{ t(L.auth.appName) }}</h1>
+          <p class="text-xs text-muted-foreground">{{ t(L.student.appName) }}</p>
         </div>
       </div>
       <div class="flex items-center gap-3">
@@ -369,17 +373,18 @@ onMounted(() => {
           class="flex items-center gap-2 rounded-full bg-background px-4 py-2 border border-border"
         >
           <GraduationCap class="h-4 w-4 text-primary" />
-          <span class="text-sm font-medium text-foreground">{{ exerciseTitle }}</span>
+          <span class="text-sm font-medium text-foreground">{{ exerciseTitle || t(L.student.lesson) }}</span>
         </div>
         <div v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
           {{ authStore.user.email }}
         </div>
         <Button variant="outline" size="sm" @click="openStudentDashboard">
           <LayoutDashboard class="mr-2 h-4 w-4" />
-          Dashboard
+          {{ t(L.student.dashboard) }}
         </Button>
+        <LanguageToggle />
         <ThemeToggle />
-        <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">
+        <Button variant="ghost" size="icon" class="h-8 w-8" :title="t(L.common.signOut)" @click="handleSignOut">
           <LogOut class="h-4 w-4" />
         </Button>
       </div>

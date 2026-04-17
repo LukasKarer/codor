@@ -9,10 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
 import { toast } from 'vue-sonner'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -45,7 +49,7 @@ const handleSignOut = async () => {
 
 const handleTryAsStudent = () => {
   if (!testExerciseId.value.trim()) {
-    toast.error('Enter an exercise ID first')
+    toast.error(t(L.teacher.dashboard.exerciseIdLabel))
     return
   }
   // Navigate as a test student — the ?test=1 flag tells IndexPage to enroll with is_test=true
@@ -65,16 +69,17 @@ const handleTryAsStudent = () => {
             <Code class="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 class="text-xl font-bold text-foreground">CodeLearn</h1>
-            <p class="text-xs text-muted-foreground">Teacher Dashboard</p>
+            <h1 class="text-xl font-bold text-foreground">{{ t(L.teacher.dashboard.appName) }}</h1>
+            <p class="text-xs text-muted-foreground">{{ t(L.teacher.dashboard.title) }}</p>
           </div>
         </div>
         <div class="flex items-center gap-3">
           <span v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
             {{ authStore.user.email }}
           </span>
+          <LanguageToggle />
           <ThemeToggle />
-          <Button variant="ghost" size="icon" class="h-8 w-8" title="Sign out" @click="handleSignOut">
+          <Button variant="ghost" size="icon" class="h-8 w-8" :title="t(L.common.signOut)" @click="handleSignOut">
             <LogOut class="h-4 w-4" />
           </Button>
         </div>
@@ -87,10 +92,10 @@ const handleTryAsStudent = () => {
         <!-- Welcome Section -->
         <div>
           <h2 class="text-3xl font-bold text-foreground">
-            Welcome back{{ authStore.user?.email ? ', ' + authStore.user.email.split('@')[0] : '' }}!
+            {{ t(L.teacher.dashboard.welcome) }}{{ authStore.user?.email ? ', ' + authStore.user.email.split('@')[0] : '' }}!
           </h2>
           <p class="mt-2 text-muted-foreground">
-            Manage your coding exercises and track student progress
+            {{ t(L.teacher.dashboard.subtitle) }}
           </p>
         </div>
 
@@ -114,9 +119,9 @@ const handleTryAsStudent = () => {
                   <Plus class="h-10 w-10 text-white" />
                 </div>
               </div>
-              <CardTitle class="text-center text-lg">Create Exercise</CardTitle>
+              <CardTitle class="text-center text-lg">{{ t(L.teacher.dashboard.createExercise) }}</CardTitle>
               <CardDescription class="text-center">
-                Design a new coding task with step-by-step guidance
+                {{ t(L.teacher.dashboard.createExerciseDescription) }}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -139,9 +144,9 @@ const handleTryAsStudent = () => {
                   <ClipboardList class="h-10 w-10 text-white" />
                 </div>
               </div>
-              <CardTitle class="text-center text-lg">Student Progress</CardTitle>
+              <CardTitle class="text-center text-lg">{{ t(L.teacher.dashboard.studentProgress) }}</CardTitle>
               <CardDescription class="text-center">
-                Review submissions, track progress, and analyze AI interactions
+                {{ t(L.teacher.dashboard.studentProgressDescription) }}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -164,9 +169,9 @@ const handleTryAsStudent = () => {
                   <GraduationCap class="h-10 w-10 text-white" />
                 </div>
               </div>
-              <CardTitle class="text-center text-lg">Try as Student</CardTitle>
+              <CardTitle class="text-center text-lg">{{ t(L.teacher.dashboard.tryAsStudent) }}</CardTitle>
               <CardDescription class="text-center">
-                Test an exercise from a student's perspective — logged as a test session
+                {{ t(L.teacher.dashboard.tryAsStudentDescription) }}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -175,14 +180,14 @@ const handleTryAsStudent = () => {
         <!-- Last Created Exercise Link -->
         <Card v-if="lastExerciseId">
           <CardHeader>
-            <CardTitle>Share Exercise Link</CardTitle>
+            <CardTitle>{{ t(L.teacher.dashboard.shareExerciseLink) }}</CardTitle>
             <CardDescription>
-              Share this link with your students to access the latest exercise
+              {{ t(L.teacher.dashboard.shareLinkDescription) }}
             </CardDescription>
           </CardHeader>
           <CardContent class="space-y-3">
             <div class="space-y-2">
-              <Label for="exercise-link">Student Access Link</Label>
+              <Label for="exercise-link">{{ t(L.teacher.dashboard.studentAccessLink) }}</Label>
               <div class="flex gap-2">
                 <Input
                   id="exercise-link"
@@ -197,7 +202,7 @@ const handleTryAsStudent = () => {
               </div>
             </div>
             <p class="text-xs text-muted-foreground">
-              Exercise ID: <code class="bg-muted px-1 py-0.5 rounded">{{ lastExerciseId }}</code>
+              {{ t(L.teacher.dashboard.exerciseId) }} <code class="bg-muted px-1 py-0.5 rounded">{{ lastExerciseId }}</code>
             </p>
           </CardContent>
         </Card>
@@ -216,23 +221,22 @@ const handleTryAsStudent = () => {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <FlaskConical class="h-5 w-5 text-orange-500" />
-                <CardTitle>Try as Student</CardTitle>
+                <CardTitle>{{ t(L.teacher.dashboard.tryAsStudent) }}</CardTitle>
               </div>
               <Button variant="ghost" size="icon" class="h-7 w-7" @click="showStudentMode = false">
                 <X class="h-4 w-4" />
               </Button>
             </div>
             <CardDescription>
-              Enter an exercise ID to join it as a test student. Your session will be marked as a
-              test run and shown with a <strong>TEST</strong> badge in the progress view.
+              {{ t(L.teacher.dashboard.tryAsStudentDialogDescription) }}
             </CardDescription>
           </CardHeader>
           <CardContent class="space-y-4">
             <div class="space-y-1.5">
-              <Label for="test-exercise-id">Exercise ID</Label>
+              <Label for="test-exercise-id">{{ t(L.teacher.dashboard.exerciseIdLabel) }}</Label>
               <Input
                 id="test-exercise-id"
-                placeholder="e.g. abc123def456"
+                :placeholder="t(L.teacher.dashboard.exerciseIdPlaceholder)"
                 v-model="testExerciseId"
                 @keyup.enter="handleTryAsStudent"
               />
@@ -243,7 +247,7 @@ const handleTryAsStudent = () => {
               @click="handleTryAsStudent"
             >
               <GraduationCap class="mr-2 h-4 w-4" />
-              Start Test Session
+              {{ t(L.teacher.dashboard.startTestSession) }}
             </Button>
           </CardContent>
         </Card>

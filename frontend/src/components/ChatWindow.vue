@@ -8,7 +8,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useExerciseStore } from '@/stores/exercise'
 import { streamChat, handleHighlightCode, getLLMHelp } from '@/lib/ai'
 import { saveAiInteraction } from '@/lib/api'
-import { AI_MODE_ENABLED, AI_MODE_DISABLED, EXAM_STRINGS } from '@/components/exam/constants'
+import { AI_MODE_ENABLED, AI_MODE_DISABLED } from '@/components/exam/constants'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   aiChatMode?: 'enabled' | 'restricted' | 'disabled'
@@ -103,7 +107,7 @@ async function handleGetHelp() {
         console.error('Get help error:', error)
         const msg = exerciseStore.messages.find((m) => m.id === helpMessageId)
         if (msg)
-          msg.content = 'Sorry, I encountered an error while analyzing your code. Please try again.'
+          msg.content = t(L.chat.errorAnalyzing)
         exerciseStore.isStreaming = false
       },
     )
@@ -164,7 +168,7 @@ async function handleSend() {
       onError: (error) => {
         console.error('Chat error:', error)
         const msg = exerciseStore.messages.find((m) => m.id === assistantMessageId)
-        if (msg) msg.content = 'Sorry, I encountered an error. Please try again.'
+        if (msg) msg.content = t(L.chat.errorGeneral)
         exerciseStore.isStreaming = false
       },
     })
@@ -193,7 +197,7 @@ function handleKeyDown(e: KeyboardEvent) {
             <div class="flex-1 min-w-0">
               <div class="flex gap-2">
                 <BookOpen class="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <h3 class="font-semibold text-foreground mb-2 leading-5">Exercise</h3>
+                <h3 class="font-semibold text-foreground mb-2 leading-5">{{ t(L.chat.exercise) }}</h3>
               </div>
               <div class="relative">
                 <p
@@ -212,7 +216,7 @@ function handleKeyDown(e: KeyboardEvent) {
                 >
                   <ChevronUp v-if="isExerciseExpanded" class="h-3 w-3 mr-1" />
                   <ChevronDown v-else class="h-3 w-3 mr-1" />
-                  {{ isExerciseExpanded ? 'Show less' : 'Show more' }}
+                  {{ isExerciseExpanded ? t(L.chat.showLess) : t(L.chat.showMore) }}
                 </Button>
               </div>
             </div>
@@ -225,10 +229,10 @@ function handleKeyDown(e: KeyboardEvent) {
             <div class="flex-1">
               <h3 class="font-semibold text-foreground flex items-center gap-2">
                 <HelpCircle class="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                Need Guidance?
+                {{ t(L.chat.needGuidance) }}
               </h3>
               <p class="mt-1 text-sm text-muted-foreground">
-                Stuck on something? I'll analyze your code and provide helpful hints!
+                {{ t(L.chat.guidanceDescription) }}
               </p>
             </div>
             <Button
@@ -237,7 +241,7 @@ function handleKeyDown(e: KeyboardEvent) {
               class="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
               @click="handleGetHelp"
             >
-              Get Help
+              {{ t(L.chat.getHelp) }}
             </Button>
           </div>
         </div>
@@ -285,7 +289,7 @@ function handleKeyDown(e: KeyboardEvent) {
     <div class="border-t border-border p-4">
       <!-- AI fully disabled: no chat, no input -->
       <p v-if="effectiveAiMode === AI_MODE_DISABLED" class="text-center text-sm text-muted-foreground py-2">
-        {{ props.locked ? EXAM_STRINGS.chatDisabledSubmitted : EXAM_STRINGS.chatDisabledExam }}
+        {{ props.locked ? t(L.chat.submittedDisabled) : t(L.chat.aiDisabled) }}
       </p>
 
       <!-- Chat available (enabled or restricted) -->
@@ -293,7 +297,7 @@ function handleKeyDown(e: KeyboardEvent) {
         <div class="flex items-center gap-2">
           <Input
             v-model="input"
-            placeholder="Ask your tutor a question..."
+            :placeholder="t(L.chat.placeholder)"
             :disabled="isChatInputDisabled"
             class="flex-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
             @keydown="handleKeyDown"
@@ -308,8 +312,8 @@ function handleKeyDown(e: KeyboardEvent) {
           </Button>
         </div>
         <p class="mt-2 text-center text-xs text-muted-foreground">
-          <span v-if="isChatInputDisabled">{{ EXAM_STRINGS.chatRestrictedHint }}</span>
-          <span v-else>Press Enter to send • Shift+Enter for new line</span>
+          <span v-if="isChatInputDisabled">{{ t(L.chat.hintsOnly) }}</span>
+          <span v-else>{{ t(L.chat.pressEnter) }}</span>
         </p>
       </template>
     </div>

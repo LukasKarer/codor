@@ -9,10 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'vue-sonner'
 import { supabase } from '@/lib/supabase'
+import { useI18n } from 'vue-i18n'
+import { L } from '@/locales/keys'
 import { useAuthStore } from '@/stores/auth'
 import { getProfile, getPublicOrganisations, setupProfile, invalidateProfileCache } from '@/lib/api'
 import type { PublicOrganisation } from '@/lib/api'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -111,7 +114,7 @@ async function handleSetupProfile() {
 const handleEmailAuth = async () => {
   if (!email.value.trim() || !password.value) return
   if (isSignUp.value && !signupValid.value) {
-    toast.error('Please fill in all fields and select an organisation')
+    toast.error(t(L.auth.validationError))
     return
   }
   isLoading.value = true
@@ -142,10 +145,10 @@ const handleEmailAuth = async () => {
         }
       }
 
-      toast.success('Account created', {
+      toast.success(t(L.auth.accountCreated), {
         description: data.session
-          ? 'You are now signed in.'
-          : 'Check your email for the confirmation link. Your profile will be saved automatically after confirming.',
+          ? t(L.auth.signedIn)
+          : t(L.auth.checkEmail),
       })
 
       if (data.session) {
@@ -179,8 +182,8 @@ const handleEmailAuth = async () => {
       }
     }
   } catch (e: unknown) {
-    toast.error('Authentication failed', {
-      description: e instanceof Error ? e.message : 'Please try again.',
+    toast.error(t(L.auth.authFailed), {
+      description: e instanceof Error ? e.message : t(L.auth.authFailedDescription),
     })
   } finally {
     isLoading.value = false
@@ -201,8 +204,8 @@ const handleMicrosoftLogin = async () => {
     // Page will redirect — loading state stays until navigation
   } catch (e: unknown) {
     isMicrosoftLoading.value = false
-    toast.error('Microsoft login failed', {
-      description: e instanceof Error ? e.message : 'Please try again.',
+    toast.error(t(L.auth.microsoftLoginFailed), {
+      description: e instanceof Error ? e.message : t(L.auth.authFailedDescription),
     })
   }
 }
@@ -219,29 +222,29 @@ const handleMicrosoftLogin = async () => {
           <Code class="h-6 w-6 text-white" />
         </div>
         <div class="text-center">
-          <h1 class="text-2xl font-bold text-foreground">CodeMentor</h1>
-          <p class="text-sm text-muted-foreground">Interactive Programming Tutor</p>
+          <h1 class="text-2xl font-bold text-foreground">{{ t(L.auth.appName) }}</h1>
+          <p class="text-sm text-muted-foreground">{{ t(L.auth.tagline) }}</p>
         </div>
       </div>
 
       <!-- ── SETUP MODE: already authenticated, just need name + org ── -->
       <Card v-if="isSetupMode">
         <CardHeader class="pb-4">
-          <CardTitle class="text-center text-lg">Complete your profile</CardTitle>
+          <CardTitle class="text-center text-lg">{{ t(L.auth.completeProfile) }}</CardTitle>
           <CardDescription class="text-center">
-            Tell us your name and organisation to finish setting up your account.
+            {{ t(L.auth.completeProfileDescription) }}
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
           <!-- Name -->
           <div class="space-y-1.5">
-            <Label for="setup-name">Full Name</Label>
+            <Label for="setup-name">{{ t(L.auth.fullName) }}</Label>
             <div class="relative">
               <User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="setup-name"
                 type="text"
-                placeholder="Your name"
+                :placeholder="t(L.auth.fullNamePlaceholder)"
                 class="pl-9"
                 v-model="signupName"
                 @keyup.enter="handleSetupProfile"
@@ -251,7 +254,7 @@ const handleMicrosoftLogin = async () => {
 
           <!-- Organisation selector -->
           <div class="space-y-1.5">
-            <Label for="setup-org">Organisation</Label>
+            <Label for="setup-org">{{ t(L.auth.organisation) }}</Label>
             <div class="relative">
               <Building2 class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <select
@@ -259,14 +262,14 @@ const handleMicrosoftLogin = async () => {
                 v-model="signupOrgId"
                 class="w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground"
               >
-                <option value="" disabled>Select your organisation…</option>
+                <option value="" disabled>{{ t(L.auth.organisationPlaceholder) }}</option>
                 <option v-for="org in eligibleOrgs" :key="org.id" :value="org.id">
                   {{ org.name }}
                 </option>
               </select>
             </div>
             <p v-if="email.trim() && eligibleOrgs.length === 0" class="text-xs text-destructive">
-              No organisations match your email address.
+              {{ t(L.auth.noOrganisations) }}
             </p>
           </div>
 
@@ -276,7 +279,7 @@ const handleMicrosoftLogin = async () => {
             @click="handleSetupProfile"
           >
             <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
-            {{ isLoading ? 'Saving…' : 'Continue' }}
+            {{ isLoading ? t(L.auth.saving) : t(L.auth.continue) }}
           </Button>
         </CardContent>
       </Card>
@@ -285,10 +288,10 @@ const handleMicrosoftLogin = async () => {
       <Card v-else>
         <CardHeader class="pb-4">
           <CardTitle class="text-center text-lg">
-            {{ isSignUp ? 'Create an account' : 'Welcome back' }}
+            {{ isSignUp ? t(L.auth.createAccount) : t(L.auth.signInTagline) }}
           </CardTitle>
           <CardDescription class="text-center">
-            {{ isSignUp ? 'Sign up to get started' : 'Sign in to continue' }}
+            {{ isSignUp ? t(L.auth.signUpTagline) : t(L.auth.signInDescription) }}
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
@@ -307,12 +310,12 @@ const handleMicrosoftLogin = async () => {
               <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
               <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
             </svg>
-            {{ isMicrosoftLoading ? 'Redirecting...' : 'Continue with Microsoft' }}
+            {{ isMicrosoftLoading ? t(L.auth.redirecting) : t(L.auth.continueWithMicrosoft) }}
           </Button>
 
           <div v-if="!isSignUp" class="flex items-center gap-3">
             <Separator class="flex-1" />
-            <span class="text-xs text-muted-foreground">or</span>
+            <span class="text-xs text-muted-foreground">{{ t(L.auth.or) }}</span>
             <Separator class="flex-1" />
           </div>
 
@@ -320,13 +323,13 @@ const handleMicrosoftLogin = async () => {
           <div class="space-y-3">
             <!-- Name (sign-up only) -->
             <div v-if="isSignUp" class="space-y-1.5">
-              <Label for="display-name">Full Name</Label>
+              <Label for="display-name">{{ t(L.auth.fullName) }}</Label>
               <div class="relative">
                 <User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="display-name"
                   type="text"
-                  placeholder="Your name"
+                  :placeholder="t(L.auth.fullNamePlaceholder)"
                   class="pl-9"
                   v-model="signupName"
                   @keyup.enter="handleEmailAuth"
@@ -336,13 +339,13 @@ const handleMicrosoftLogin = async () => {
 
             <!-- Email -->
             <div class="space-y-1.5">
-              <Label for="email">Email</Label>
+              <Label for="email">{{ t(L.auth.email) }}</Label>
               <div class="relative">
                 <Mail class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  :placeholder="t(L.auth.emailPlaceholder)"
                   class="pl-9"
                   v-model="email"
                   @input="onEmailInput"
@@ -353,12 +356,12 @@ const handleMicrosoftLogin = async () => {
 
             <!-- Password -->
             <div class="space-y-1.5">
-              <Label for="password">Password</Label>
+              <Label for="password">{{ t(L.auth.password) }}</Label>
               <div class="relative">
                 <Input
                   id="password"
                   :type="showPassword ? 'text' : 'password'"
-                  placeholder="••••••••"
+                  :placeholder="t(L.auth.passwordPlaceholder)"
                   class="pr-9"
                   v-model="password"
                   @keyup.enter="handleEmailAuth"
@@ -376,7 +379,7 @@ const handleMicrosoftLogin = async () => {
 
             <!-- Organisation selector (sign-up only) -->
             <div v-if="isSignUp" class="space-y-1.5">
-              <Label for="organisation">Organisation</Label>
+              <Label for="organisation">{{ t(L.auth.organisation) }}</Label>
               <div class="relative">
                 <Building2 class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <select
@@ -384,7 +387,7 @@ const handleMicrosoftLogin = async () => {
                   v-model="signupOrgId"
                   class="w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground"
                 >
-                  <option value="" disabled>Select your organisation…</option>
+                  <option value="" disabled>{{ t(L.auth.organisationPlaceholder) }}</option>
                   <option
                     v-for="org in eligibleOrgs"
                     :key="org.id"
@@ -398,10 +401,10 @@ const handleMicrosoftLogin = async () => {
                 v-if="isSignUp && email.trim() && eligibleOrgs.length === 0"
                 class="text-xs text-destructive"
               >
-                No organisations match your email address.
+                {{ t(L.auth.noOrganisations) }}
               </p>
               <p v-else class="text-xs text-muted-foreground">
-                Only organisations that accept your email are shown.
+                {{ t(L.auth.emailNote) }}
               </p>
             </div>
 
@@ -415,19 +418,19 @@ const handleMicrosoftLogin = async () => {
               @click="handleEmailAuth"
             >
               <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
-              {{ isLoading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In' }}
+              {{ isLoading ? t(L.auth.pleaseWait) : isSignUp ? t(L.auth.createAccountButton) : t(L.auth.signInButton) }}
             </Button>
           </div>
 
           <!-- Toggle sign-up / sign-in -->
           <p class="text-center text-sm text-muted-foreground">
-            {{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}
+            {{ isSignUp ? t(L.auth.alreadyHaveAccount) : t(L.auth.dontHaveAccount) }}
             <button
               type="button"
               class="font-medium text-primary hover:underline"
               @click="isSignUp = !isSignUp"
             >
-              {{ isSignUp ? 'Sign in' : 'Sign up' }}
+              {{ isSignUp ? t(L.auth.signIn) : t(L.auth.signUp) }}
             </button>
           </p>
         </CardContent>

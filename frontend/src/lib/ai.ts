@@ -104,6 +104,10 @@ async function consumeSSE(
 
 // ─── Public API (same signatures as before) ────────────────────────────────
 
+function getLocale(): string {
+  return localStorage.getItem('locale') ?? 'de'
+}
+
 export async function streamChat(
   messages: Message[],
   currentCode: string,
@@ -115,6 +119,7 @@ export async function streamChat(
       {
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         currentCode,
+        language: getLocale(),
       },
       callbacks,
     )
@@ -144,7 +149,7 @@ export async function explainStep(
   try {
     await consumeSSE(
       '/v1/ai/explain-step',
-      { step, code, exerciseDescription },
+      { step, code, exerciseDescription, language: getLocale() },
       { onTextChunk, onFunctionCall, onComplete, onError },
     )
   } catch (error) {
@@ -164,7 +169,7 @@ export async function getLLMHelp(
   try {
     await consumeSSE(
       '/v1/ai/get-help',
-      { code, exerciseDescription, tasksOutline },
+      { code, exerciseDescription, tasksOutline, language: getLocale() },
       { onTextChunk, onFunctionCall, onComplete, onError },
     )
   } catch (error) {
