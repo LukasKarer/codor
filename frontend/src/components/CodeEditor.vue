@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch, onUnmounted } from 'vue'
+import { useMonacoTheme } from '@/composables/useMonacoTheme'
 import { Play, Copy, Check } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { L } from '@/locales/keys'
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const exerciseStore = useExerciseStore()
+const monacoTheme = useMonacoTheme()
 const copied = ref(false)
 const logs = ref<LogEntry[]>([])
 const workerRef = ref<Worker | null>(null)
@@ -154,7 +156,7 @@ onUnmounted(() => {
           <VueMonacoEditor
             height="100%"
             language="javascript"
-            theme="vs-dark"
+            :theme="monacoTheme"
             :value="exerciseStore.code"
             :options="{
               minimap: { enabled: false },

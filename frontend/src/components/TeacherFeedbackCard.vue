@@ -53,13 +53,13 @@ const handleSave = async () => {
 </script>
 
 <template>
-  <Card class="border-white/10 bg-[#09132b]/85 border-blue-500/30">
+  <Card class="border-blue-500/30">
     <CardHeader>
-      <CardTitle class="flex items-center gap-2 text-2xl text-slate-100">
-        <User class="h-6 w-6 text-blue-300" />
+      <CardTitle class="flex items-center gap-2 text-2xl">
+        <User class="h-6 w-6 text-blue-500 dark:text-blue-300" />
         {{ t(L.teacher.feedback.title) }}
       </CardTitle>
-      <CardDescription class="text-slate-400">
+      <CardDescription>
         {{ t(L.teacher.feedback.description) }}
       </CardDescription>
     </CardHeader>
@@ -67,13 +67,13 @@ const handleSave = async () => {
       <Textarea
         v-model="feedback"
         :placeholder="t(L.teacher.feedback.placeholder)"
-        class="min-h-[100px] border-white/20 bg-black/20 focus-visible:ring-blue-500"
+        class="min-h-[100px] focus-visible:ring-blue-500"
       />
       <div class="flex gap-2">
       <Button
         variant="ghost"
         :disabled="!feedback"
-        class="text-slate-400 hover:text-slate-200 hover:bg-white/10 px-3"
+        class="px-3"
         @click="feedback = ''"
       >
         <X class="h-4 w-4 mr-2" />
