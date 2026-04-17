@@ -285,5 +285,14 @@ export default {
       title: 'Oops! Page not found',
       home: 'Return to Home',
     },
+    theme: {
+      light: 'Light',
+      dark: 'Dark',
+      system: 'System Default',
+    },
+    language: {
+      de: 'Deutsch',
+      en: 'English',
+    },
   },
 }
