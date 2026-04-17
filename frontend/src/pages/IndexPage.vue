@@ -378,7 +378,7 @@ onMounted(() => {
         <div v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
           {{ authStore.user.email }}
         </div>
-        <Button variant="outline" size="sm" @click="openStudentDashboard">
+        <Button variant="outline" class="h-9 gap-1.5 px-3" @click="openStudentDashboard">
           <LayoutDashboard class="mr-2 h-4 w-4" />
           {{ t(L.student.dashboard) }}
         </Button>
