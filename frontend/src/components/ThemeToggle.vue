@@ -61,7 +61,7 @@ const options = Object.values(Theme)
         <DropdownMenuItem
           v-for="option in options"
           :key="option"
-          class="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+          class="relative flex cursor-pointer select-none items-center mt-1 gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
           :class="{ 'bg-accent text-accent-foreground': theme === option }"
           @click="theme = option"
         >
