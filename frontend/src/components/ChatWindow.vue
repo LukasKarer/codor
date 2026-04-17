@@ -220,6 +220,25 @@ function handleKeyDown(e: KeyboardEvent) {
                   {{ isExerciseExpanded ? t(L.chat.showLess) : t(L.chat.showMore) }}
                 </Button>
               </div>
+
+              <!-- Learning Steps -->
+              <ol v-if="exerciseStore.steps.length" class="mt-3 space-y-2">
+                <li
+                  v-for="(step, index) in exerciseStore.steps"
+                  :key="index"
+                  class="flex gap-2.5 text-sm"
+                >
+                  <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                    {{ index + 1 }}
+                  </span>
+                  <span class="flex-1 text-muted-foreground leading-relaxed">
+                    {{ step.description }}
+                    <span class="ml-1 whitespace-nowrap text-xs text-muted-foreground/60">
+                      ({{ step.lineStart === step.lineEnd ? `L${step.lineStart}` : `L${step.lineStart}–${step.lineEnd}` }})
+                    </span>
+                  </span>
+                </li>
+              </ol>
             </div>
           </CardContent>
         </Card>
