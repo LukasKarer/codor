@@ -294,5 +294,14 @@ export default {
       title: 'Ups! Seite nicht gefunden',
       home: 'Zur Startseite',
     },
+    theme: {
+      light: 'Hell',
+      dark: 'Dunkel',
+      system: 'Systemstandard',
+    },
+    language: {
+      de: 'Deutsch',
+      en: 'English',
+    },
   },
 }
