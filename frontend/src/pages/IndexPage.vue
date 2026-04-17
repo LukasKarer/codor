@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Code, GraduationCap, LayoutDashboard, Loader2, LogOut, X } from 'lucide-vue-next'
+import { Code, GraduationCap, LayoutDashboard, Loader2, X } from 'lucide-vue-next'
 import ExamToolbar from '@/components/exam/ExamToolbar.vue'
 import SubmitConfirmDialog from '@/components/exam/SubmitConfirmDialog.vue'
 import TimesUpDialog from '@/components/exam/TimesUpDialog.vue'
@@ -11,6 +11,7 @@ import CodeEditor from '@/components/CodeEditor.vue'
 import ChatWindow from '@/components/ChatWindow.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import UserMenu from '@/components/UserMenu.vue'
 import { Button } from '@/components/ui/button'
 import { useI18n } from 'vue-i18n'
 import { L } from '@/locales/keys'
@@ -369,24 +370,13 @@ onMounted(() => {
           :is-finished="exerciseStore.isFinished"
           @submit-clicked="showSubmitConfirmDialog = true"
         />
-        <div
-          class="flex items-center gap-2 rounded-full bg-background px-4 py-2 border border-border"
-        >
-          <GraduationCap class="h-4 w-4 text-primary" />
-          <span class="text-sm font-medium text-foreground">{{ exerciseTitle || t(L.student.lesson) }}</span>
-        </div>
-        <div v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
-          {{ authStore.user.email }}
-        </div>
         <Button variant="secondary" class="h-9 gap-1.5 px-3" @click="openStudentDashboard">
           <LayoutDashboard class="mr-2 h-4 w-4" />
           {{ t(L.student.dashboard) }}
         </Button>
         <LanguageToggle />
         <ThemeToggle />
-        <Button variant="ghost" size="icon" class="h-8 w-8" :title="t(L.common.signOut)" @click="handleSignOut">
-          <LogOut class="h-4 w-4" />
-        </Button>
+        <UserMenu @sign-out="handleSignOut" />
       </div>
     </header>
 
