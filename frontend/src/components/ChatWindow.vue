@@ -17,6 +17,7 @@ const { t } = useI18n()
 const props = defineProps<{
   aiChatMode?: 'enabled' | 'restricted' | 'disabled'
   locked?: boolean
+  exerciseTitle?: string
 }>()
 
 const exerciseStore = useExerciseStore()
@@ -197,7 +198,7 @@ function handleKeyDown(e: KeyboardEvent) {
             <div class="flex-1 min-w-0">
               <div class="flex gap-2">
                 <BookOpen class="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <h3 class="font-semibold text-foreground mb-2 leading-5">{{ t(L.chat.exercise) }}</h3>
+                <h3 class="font-semibold text-foreground mb-2 leading-5">{{ exerciseTitle || t(L.student.lesson) }}</h3>
               </div>
               <div class="relative">
                 <p
