@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { Send, Bot, User, HelpCircle, BookOpen, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { Send, Bot, BotOff, User, HelpCircle, BookOpen, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -224,70 +224,83 @@ function handleKeyDown(e: KeyboardEvent) {
           </CardContent>
         </Card>
 
-        <!-- Help Button Section -->
-        <div class="border-b border-border bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex-1">
-              <h3 class="font-semibold text-foreground flex items-center gap-2">
-                <HelpCircle class="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                {{ t(L.chat.needGuidance) }}
-              </h3>
-              <p class="mt-1 text-sm text-muted-foreground">
-                {{ t(L.chat.guidanceDescription) }}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              :disabled="isGetHelpDisabled"
-              class="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-              @click="handleGetHelp"
-            >
-              {{ t(L.chat.getHelp) }}
-            </Button>
+        <!-- AI fully disabled for this exam: show notice instead of help + messages -->
+        <div
+          v-if="props.aiChatMode === AI_MODE_DISABLED"
+          class="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center"
+        >
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <BotOff class="h-6 w-6 text-muted-foreground" />
           </div>
+          <p class="text-sm text-muted-foreground">{{ t(L.chat.aiDisabled) }}</p>
         </div>
 
-        <!-- Messages -->
-        <div class="flex flex-col gap-4 p-4">
-          <div
-            v-for="message in exerciseStore.messages"
-            :key="message.id"
-            class="flex gap-3"
-            :class="{ 'flex-row-reverse': message.role === 'user' }"
-          >
-            <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-              :class="
-                message.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground'
-              "
-            >
-              <User v-if="message.role === 'user'" class="h-4 w-4" />
-              <Bot v-else class="h-4 w-4" />
-            </div>
-            <div
-              class="max-w-[80%] rounded-2xl px-4 py-2.5"
-              :class="
-                message.role === 'user'
-                  ? 'bg-primary/20 text-foreground'
-                  : 'bg-[var(--color-chat-tutor,theme(colors.neutral.100))] text-foreground'
-              "
-            >
-              <p class="text-sm leading-relaxed whitespace-pre-wrap">
-                {{
-                  message.content ||
-                  (message.role === 'assistant' && exerciseStore.isStreaming ? '...' : '')
-                }}
-              </p>
+        <template v-else>
+          <!-- Help Button Section -->
+          <div class="border-b border-border bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4">
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex-1">
+                <h3 class="font-semibold text-foreground flex items-center gap-2">
+                  <HelpCircle class="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  {{ t(L.chat.needGuidance) }}
+                </h3>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  {{ t(L.chat.guidanceDescription) }}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                :disabled="isGetHelpDisabled"
+                class="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                @click="handleGetHelp"
+              >
+                {{ t(L.chat.getHelp) }}
+              </Button>
             </div>
           </div>
-        </div>
+
+          <!-- Messages -->
+          <div class="flex flex-col gap-4 p-4">
+            <div
+              v-for="message in exerciseStore.messages"
+              :key="message.id"
+              class="flex gap-3"
+              :class="{ 'flex-row-reverse': message.role === 'user' }"
+            >
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                :class="
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground'
+                "
+              >
+                <User v-if="message.role === 'user'" class="h-4 w-4" />
+                <Bot v-else class="h-4 w-4" />
+              </div>
+              <div
+                class="max-w-[80%] rounded-2xl px-4 py-2.5"
+                :class="
+                  message.role === 'user'
+                    ? 'bg-primary/20 text-foreground'
+                    : 'bg-[var(--color-chat-tutor,theme(colors.neutral.100))] text-foreground'
+                "
+              >
+                <p class="text-sm leading-relaxed whitespace-pre-wrap">
+                  {{
+                    message.content ||
+                    (message.role === 'assistant' && exerciseStore.isStreaming ? '...' : '')
+                  }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </ScrollArea>
 
-    <!-- Input Area -->
-    <div class="border-t border-border p-4">
+    <!-- Input Area (hidden when AI is exam-disabled; notice is shown inline above instead) -->
+    <div v-if="props.aiChatMode !== AI_MODE_DISABLED" class="border-t border-border p-4">
       <!-- AI fully disabled: no chat, no input -->
       <p v-if="effectiveAiMode === AI_MODE_DISABLED" class="text-center text-sm text-muted-foreground py-2">
         {{ props.locked ? t(L.chat.submittedDisabled) : t(L.chat.aiDisabled) }}
