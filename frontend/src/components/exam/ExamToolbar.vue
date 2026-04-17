@@ -42,6 +42,7 @@ const formattedTime = computed(() => {
           ? 'border-red-500 text-red-500 animate-pulse'
           : 'border-border text-foreground',
       ]"
+      class="h-9 gap-1.5 px-3"
     >
       <Clock class="h-3.5 w-3.5" />
       {{ formattedTime }}
@@ -51,7 +52,7 @@ const formattedTime = computed(() => {
     <Button
       v-if="showSubmitButton"
       variant="default"
-      size="sm"
+      class="h-9 gap-1.5 px-3"
       :disabled="isSubmitting || isFinished"
       @click="emit('submitClicked')"
     >
@@ -62,7 +63,7 @@ const formattedTime = computed(() => {
 
     <div
       v-if="isFinished && !isLocked"
-      class="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+      class="flex items-center h-9 gap-1.5 rounded-full px-3 py-1 text-sm border border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
     >
       <CheckCircle2 class="h-3.5 w-3.5" />
       {{ t(L.exam.toolbar.finishedAwaiting) }}
@@ -71,7 +72,7 @@ const formattedTime = computed(() => {
     <!-- Locked badge -->
     <div
       v-if="isLocked"
-      class="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border border-border text-muted-foreground"
+      class="flex items-center h-9 gap-1.5 rounded-full px-3 py-1 text-sm border border-border text-muted-foreground"
     >
       <Lock class="h-3.5 w-3.5" />
       {{ t(L.exam.toolbar.submittedReadOnly) }}
