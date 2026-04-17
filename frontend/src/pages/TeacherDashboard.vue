@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Code, Plus, ClipboardList, Copy, Check, GraduationCap, FlaskConical, LogOut, X,
+  Code, Plus, ClipboardList, Copy, Check, GraduationCap, FlaskConical, X,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import UserMenu from '@/components/UserMenu.vue'
 import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import { L } from '@/locales/keys'
@@ -74,14 +75,9 @@ const handleTryAsStudent = () => {
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span v-if="authStore.user?.email" class="text-xs text-muted-foreground hidden sm:block">
-            {{ authStore.user.email }}
-          </span>
           <LanguageToggle />
           <ThemeToggle />
-          <Button variant="ghost" size="icon" class="h-8 w-8" :title="t(L.common.signOut)" @click="handleSignOut">
-            <LogOut class="h-4 w-4" />
-          </Button>
+          <UserMenu @sign-out="handleSignOut" />
         </div>
       </div>
     </header>
