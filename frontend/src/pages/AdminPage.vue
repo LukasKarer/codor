@@ -560,7 +560,7 @@ function copyToClipboard(text: string, label: string) {
             <Input
               id="org-patterns"
               v-model="orgForm.email_patterns"
-              :placeholder="t(L.admin.emailPatternsPlaceholder)"
+              placeholder="@acme.com, @students.acme.com"
             />
             <p class="text-xs text-muted-foreground">
               {{ t(L.admin.emailPatternsNote) }}

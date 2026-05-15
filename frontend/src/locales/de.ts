@@ -57,7 +57,6 @@ export default {
     redirecting: 'Weiterleitung...',
     or: 'oder',
     email: 'E-Mail',
-    emailPlaceholder: 'du@beispiel.de',
     password: 'Passwort',
     passwordPlaceholder: '••••••••',
     validationError: 'Bitte alle Felder ausfüllen und eine Organisation auswählen',
@@ -239,7 +238,6 @@ export default {
     editOrganisation: 'Organisation bearbeiten',
     name: 'Name',
     namePlaceholder: 'Muster-Schule',
-    emailPatternsPlaceholder: '@muster.de, @schueler.muster.de',
     emailPatternsNote:
       'Kommagetrennte Teilzeichenfolgen. Leer lassen, um jede E-Mail zuzulassen.',
     orgAdminIds: 'Org-Admin-IDs',

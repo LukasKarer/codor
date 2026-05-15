@@ -345,7 +345,7 @@ const handleMicrosoftLogin = async () => {
                 <Input
                   id="email"
                   type="email"
-                  :placeholder="t(L.auth.emailPlaceholder)"
+                  placeholder="you@example.com"
                   class="pl-9"
                   v-model="email"
                   @input="onEmailInput"
