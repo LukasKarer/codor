@@ -25,12 +25,21 @@ import ExamSettingsCard from '@/components/ExamSettings.vue'
 import { useI18n } from 'vue-i18n'
 import { L } from '@/locales/keys'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { generateTasks, generateDescription } from '@/lib/ai'
 import type { Step as AIStep } from '@/lib/ai'
 import { createExercise, serializeExerciseContent } from '@/lib/api'
 import type { ExamSettings } from '@/lib/api'
 import { toast } from 'vue-sonner'
 import type { editor as MonacoEditorType } from 'monaco-editor'
+import { getRuntime } from '@/languages/registry'
+import type { SupportedLanguage } from '@/languages/types'
 
 interface Step extends AIStep {
   id: number
@@ -59,14 +68,46 @@ const isGenerating = ref(false)
 const isGeneratingDescription = ref(false)
 const isPublishing = ref(false)
 const title = ref('Build a Greeting Function')
-const code = ref(`function greet(name) {
+const language = ref<SupportedLanguage>('javascript')
+
+const defaultCodes: Record<SupportedLanguage, string> = {
+  javascript: `function greet(name) {
   const greeting = "Hello, " + name + "!";
   console.log(greeting);
   return greeting;
 }
 
 const result = greet("Student");
-console.log(result);`)
+console.log(result);`,
+  python: `def greet(name):
+    greeting = "Hello, " + name + "!"
+    print(greeting)
+    return greeting
+
+result = greet("Student")
+print(result)`,
+  java: `public class Main {
+    public static String greet(String name) {
+        String greeting = "Hello, " + name + "!";
+        System.out.println(greeting);
+        return greeting;
+    }
+
+    public static void main(String[] args) {
+        String result = greet("Student");
+        System.out.println(result);
+    }
+}`,
+}
+
+const code = ref(defaultCodes.javascript)
+
+watch(language, (newLang, oldLang) => {
+  if (code.value === defaultCodes[oldLang]) {
+    code.value = defaultCodes[newLang]
+  }
+})
+
 const description = ref('')
 const steps = ref<Step[]>([])
 const selectedStep = ref<number | null>(null)
@@ -192,27 +233,33 @@ function handleEditorMount(editor: MonacoEditorType.IStandaloneCodeEditor) {
   injectDecorationStyles()
 }
 
-function handleRun() {
+async function handleRun() {
   logs.value = []
   if (workerRef.value) workerRef.value.terminate()
 
-  const worker = new Worker(new URL('../workers/codeExecutor.ts', import.meta.url), {
-    type: 'module',
-  })
-  workerRef.value = worker
+  const runtime = getRuntime(language.value)
+  if (!runtime.isReady) {
+    logs.value.push({ type: 'info', content: `Loading ${runtime.name} runtime...` })
+  }
 
-  worker.onmessage = (e) => {
-    const { type, level, args, message } = e.data
-    if (type === 'console') {
-      logs.value.push({ type: level, content: args.join(' ') })
-    } else if (type === 'error') {
-      logs.value.push({ type: 'error', content: `Error: ${message}` })
+  try {
+    const result = await runtime.run(code.value)
+    if (result.stdout) {
+      result.stdout.split('\n').forEach((line) => {
+        if (line) logs.value.push({ type: 'log', content: line })
+      })
     }
+    if (result.stderr) {
+      result.stderr.split('\n').forEach((line) => {
+        if (line) logs.value.push({ type: 'error', content: line })
+      })
+    }
+    if (result.exitCode !== 0 && !result.stderr) {
+      logs.value.push({ type: 'error', content: `Exited with code ${result.exitCode}` })
+    }
+  } catch (e: any) {
+    logs.value.push({ type: 'error', content: `Run error: ${e.message}` })
   }
-  worker.onerror = (err) => {
-    logs.value.push({ type: 'error', content: `Worker Error: ${err.message}` })
-  }
-  worker.postMessage(code.value)
 }
 
 onUnmounted(() => {
@@ -255,7 +302,7 @@ const handleGenerateTasks = async () => {
   if (!code.value || !description.value) return
   isGenerating.value = true
   try {
-    const generated = await generateTasks(code.value, description.value)
+    const generated = await generateTasks(code.value, description.value, language.value)
     steps.value = generated.map((s, idx) => ({ ...s, id: idx + 1 }))
   } catch (e) {
     console.error('Failed to generate tasks:', e)
@@ -268,7 +315,7 @@ const handleGenerateDescription = async () => {
   if (!code.value) return
   isGeneratingDescription.value = true
   try {
-    description.value = await generateDescription(code.value)
+    description.value = await generateDescription(code.value, language.value)
   } catch (e) {
     console.error('Failed to generate description:', e)
   } finally {
@@ -295,6 +342,7 @@ const handleSubmit = async () => {
       title: title.value,
       code: code.value,
       description: description.value,
+      language: language.value,
       steps: steps.value.map(({ description: desc, lineStart, lineEnd }) => ({
         description: desc,
         lineStart,
@@ -385,9 +433,21 @@ const handleSubmit = async () => {
 
         <div class="flex flex-1 flex-col overflow-hidden">
           <div class="flex items-center justify-between border-b border-border px-4 py-2">
-            <span class="font-mono text-sm font-medium text-muted-foreground">
-              {{ t(L.teacher.upload.solutionCode) }}
-            </span>
+            <div class="flex items-center gap-3">
+              <span class="font-mono text-sm font-medium text-muted-foreground">
+                {{ t(L.teacher.upload.solutionCode) }}
+              </span>
+              <Select v-model="language">
+                <SelectTrigger class="h-7 w-32 text-xs">
+                  <SelectValue :placeholder="t(L.teacher.upload.programmingLanguage)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="javascript">{{ t(L.teacher.upload.languages.javascript) }}</SelectItem>
+                  <SelectItem value="python">{{ t(L.teacher.upload.languages.python) }}</SelectItem>
+                  <SelectItem value="java">{{ t(L.teacher.upload.languages.java) }}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               size="sm"
               class="h-8 gap-1.5 text-primary-foreground bg-gradient-to-br from-purple-600 to-blue-500"
@@ -403,7 +463,7 @@ const handleSubmit = async () => {
               <div class="h-full w-full overflow-hidden">
                 <VueMonacoEditor
                   v-model:value="code"
-                  language="javascript"
+                  :language="language"
                   :theme="monacoTheme"
                   :options="{
                     fontSize: 13,

@@ -85,7 +85,7 @@ export default {
     welcomeMessage:
       'Willkommen! Ich bin dein Programmiertutor. Lies die Aufgabenbeschreibung oben und fang an zu programmieren. Wenn du Hilfe brauchst, klick einfach auf „Hilfe anfordern" – ich führe dich durch die Aufgabe, ohne die Lösung zu verraten!',
     defaultExerciseDescription:
-      'In dieser Übung lernst du, wie du Funktionen in JavaScript erstellst und verwendest. Dein Ziel ist:\n- Eine Funktion namens „greet" zu erstellen, die einen Namen als Eingabe erhält\n- Die Funktion soll eine Begrüßungsnachricht mit dem Namen erstellen\n- Die Begrüßung in der Konsole ausgeben\n- Die Begrüßung zurückgeben, damit sie weiterverwendet werden kann\n- Die Funktion mit einem Namen aufrufen und den Rückgabewert verwenden\n\nNimm dir Zeit und experimentiere! Wenn du nicht weiterkommst, klick auf „Hilfe anfordern" – ich helfe dir, ohne die Lösung direkt zu verraten.',
+      'In dieser Übung lernst du, wie du Funktionen erstellst und verwendest. Dein Ziel ist:\n- Eine Funktion namens „greet" zu erstellen, die einen Namen als Eingabe erhält\n- Die Funktion soll eine Begrüßungsnachricht mit dem Namen erstellen\n- Die Begrüßung in der Konsole ausgeben\n- Die Begrüßung zurückgeben, damit sie weiterverwendet werden kann\n- Die Funktion mit einem Namen aufrufen und den Rückgabewert verwenden\n\nNimm dir Zeit und experimentiere! Wenn du nicht weiterkommst, klick auf „Hilfe anfordern" – ich helfe dir, ohne die Lösung direkt zu verraten.',
     exerciseNotFound: 'Übung nicht gefunden. Bitte überprüfe die ID und versuche es erneut.',
     failedToLoad: 'Übung konnte nicht geladen werden',
     dashboardDialog: {
@@ -159,8 +159,14 @@ export default {
         endLine: 'Endzeile',
         addManualStep: 'Schritt manuell hinzufügen',
       },
+      programmingLanguage: 'Programmiersprache',
       missingInfo: 'Fehlende Informationen',
       missingInfoDescription: 'Bitte fülle alle Felder aus und füge mindestens einen Schritt hinzu.',
+      languages: {
+        javascript: 'JavaScript',
+        python: 'Python',
+        java: 'Java',
+      },
     },
     feedback: {
       title: 'Feedback der Lehrkraft',

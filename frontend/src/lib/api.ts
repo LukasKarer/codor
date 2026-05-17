@@ -375,6 +375,7 @@ export function serializeExerciseContent(data: {
   title: string
   code: string
   description: string
+  language?: string
   steps: Array<{
     description: string
     lineStart: number
@@ -389,6 +390,7 @@ export function parseExerciseContent(content: string): {
   title: string
   code: string
   description: string
+  language?: string
   steps: Array<{
     description: string
     lineStart: number

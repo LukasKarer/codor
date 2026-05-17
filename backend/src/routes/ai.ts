@@ -86,6 +86,10 @@ function languageInstruction(language: string | undefined): string {
   return `\n\nIMPORTANT: Always respond in ${name}.`;
 }
 
+function codeBlockLanguage(programmingLanguage: string | undefined): string {
+  return programmingLanguage ?? 'javascript';
+}
+
 // ─── SSE helpers ───────────────────────────────────────────────────────────
 
 function initSSE(res: Response) {
@@ -132,10 +136,11 @@ function extractToolCallArgs<T>(response: Record<string, unknown>, expectedToolN
  * SSE events: text, function_call, done, error
  */
 router.post('/ai/chat', async (req: Request, res: Response) => {
-  const { messages, currentCode, language } = req.body as {
+  const { messages, currentCode, language, programmingLanguage } = req.body as {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     currentCode: string;
     language?: string;
+    programmingLanguage?: string;
   };
 
   initSSE(res);
@@ -144,7 +149,7 @@ router.post('/ai/chat', async (req: Request, res: Response) => {
     const chatMessages = [
       {
         role: 'system' as const,
-        content: `${SYSTEM_PROMPT}${languageInstruction(language)}\n\nCurrent code in the editor:\n\`\`\`javascript\n${currentCode}\n\`\`\``,
+        content: `${SYSTEM_PROMPT}${languageInstruction(language)}\n\nCurrent code in the editor:\n\`\`\`${codeBlockLanguage(programmingLanguage)}\n${currentCode}\n\`\`\``,
       },
       ...messages.map((msg) => ({
         role: msg.role,
@@ -185,11 +190,12 @@ router.post('/ai/chat', async (req: Request, res: Response) => {
  * SSE events: text, function_call, done, error
  */
 router.post('/ai/explain-step', async (req: Request, res: Response) => {
-  const { step, code, exerciseDescription, language } = req.body as {
+  const { step, code, exerciseDescription, language, programmingLanguage } = req.body as {
     step: { description: string; lineStart: number; lineEnd: number };
     code: string;
     exerciseDescription: string;
     language?: string;
+    programmingLanguage?: string;
   };
 
   initSSE(res);
@@ -200,7 +206,7 @@ router.post('/ai/explain-step', async (req: Request, res: Response) => {
 "${exerciseDescription}"
 
 Here is the student's current code:
-\`\`\`javascript
+\`\`\`${codeBlockLanguage(programmingLanguage)}
 ${code}
 \`\`\`
 
@@ -247,11 +253,12 @@ Start by calling highlight_code, then give your explanation.`;
  * SSE events: text, function_call, done, error
  */
 router.post('/ai/get-help', async (req: Request, res: Response) => {
-  const { code, exerciseDescription, tasksOutline, language } = req.body as {
+  const { code, exerciseDescription, tasksOutline, language, programmingLanguage } = req.body as {
     code: string;
     exerciseDescription: string;
     tasksOutline: Array<{ description: string; lineStart: number; lineEnd: number }>;
     language?: string;
+    programmingLanguage?: string;
   };
 
   initSSE(res);
@@ -266,7 +273,7 @@ router.post('/ai/get-help', async (req: Request, res: Response) => {
 "${exerciseDescription}"
 
 Here is the student's current code:
-\`\`\`javascript
+\`\`\`${codeBlockLanguage(programmingLanguage)}
 ${code}
 \`\`\`
 
@@ -314,11 +321,17 @@ Provide your guidance now:`;
  * Response: { tasks: Step[] }
  */
 router.post('/ai/generate-tasks', async (req: Request, res: Response) => {
-  const { code, description } = req.body as { code: string; description: string };
+  const { code, description, programmingLanguage } = req.body as {
+    code: string;
+    description: string;
+    programmingLanguage?: string;
+  };
+
+  const lang = codeBlockLanguage(programmingLanguage);
 
   try {
     const prompt = `You are an expert programming tutor.
-Your goal is to break down the provided code into a series of high-level, educational tasks or steps that a student would follow to build this code.
+Your goal is to break down the provided ${lang} code into a series of high-level, educational tasks or steps that a student would follow to build this code.
 
 For each task:
 1. Provide a clear, concise description of what needs to be done.
@@ -327,7 +340,9 @@ For each task:
 4. Use the \`generate_tasks\` tool to return the result.
 
 Code:
+\`\`\`${lang}
 ${code}
+\`\`\`
 
 Description:
 ${description}
@@ -357,15 +372,22 @@ ${description}
  * Response: { description: string }
  */
 router.post('/ai/generate-description', async (req: Request, res: Response) => {
-  const { code } = req.body as { code: string };
+  const { code, programmingLanguage } = req.body as {
+    code: string;
+    programmingLanguage?: string;
+  };
+
+  const lang = codeBlockLanguage(programmingLanguage);
 
   try {
     const prompt = `You are an expert programming tutor.
-Your goal is to generate a comprehensive and educational description for the provided code.
+Your goal is to generate a comprehensive and educational description for the provided ${lang} code.
 The description should explain what the code does. Do NOT include implementation details or step-by-step instructions.
 
 Code:
+\`\`\`${lang}
 ${code}
+\`\`\`
 
 Use the \`generate_description\` tool to return the result.
 `;

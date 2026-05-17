@@ -6,6 +6,7 @@ import usersRouter from "./routes/users";
 import profilesRouter from "./routes/profiles";
 import aiRouter from "./routes/ai";
 import organisationsRouter from "./routes/organisations";
+import proxyRouter from "./routes/proxy";
 import rateLimit from 'express-rate-limit';
 
 const app = express();
@@ -75,6 +76,7 @@ const limiter = rateLimit({
 });
 
 // Apply rate limiting to all requests
+app.use("/v1/proxy/teavm", proxyRouter);
 
 app.use(limiter);
 

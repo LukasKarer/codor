@@ -82,7 +82,7 @@ export default {
     welcomeMessage:
       "Welcome! I'm your coding tutor. Read the exercise description above and start coding. If you need help, just click the 'Get Help' button and I'll guide you without giving away the solution!",
     defaultExerciseDescription:
-      "In this exercise, you'll learn how to create and use functions in JavaScript. Your goal is to:\n- Create a function called 'greet' that takes a person's name as input\n- The function should create a greeting message with that name\n- Print the greeting to the console\n- Return the greeting so it can be used elsewhere\n- Call the function with a name and use the returned value\n\nTake your time and experiment! If you get stuck, click the \"Get Help\" button and I'll guide you without giving away the solution.",
+      "In this exercise, you'll learn how to create and use functions. Your goal is to:\n- Create a function called 'greet' that takes a person's name as input\n- The function should create a greeting message with that name\n- Print the greeting to the console\n- Return the greeting so it can be used elsewhere\n- Call the function with a name and use the returned value\n\nTake your time and experiment! If you get stuck, click the \"Get Help\" button and I'll guide you without giving away the solution.",
     exerciseNotFound: 'Exercise not found. Please check the ID and try again.',
     failedToLoad: 'Failed to load exercise',
     dashboardDialog: {
@@ -154,8 +154,14 @@ export default {
         endLine: 'End Line',
         addManualStep: 'Add Manual Step',
       },
+      programmingLanguage: 'Programming Language',
       missingInfo: 'Missing Information',
       missingInfoDescription: 'Please fill in all fields and add at least one step.',
+      languages: {
+        javascript: 'JavaScript',
+        python: 'Python',
+        java: 'Java',
+      },
     },
     feedback: {
       title: 'Teacher Feedback',

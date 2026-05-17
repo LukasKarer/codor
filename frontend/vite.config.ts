@@ -19,4 +19,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/proxy/teavm': {
+        target: 'https://teavm.org/playground/3',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/proxy\/teavm/, ''),
+      },
+    },
+  },
 })

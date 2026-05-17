@@ -112,6 +112,7 @@ export async function streamChat(
   messages: Message[],
   currentCode: string,
   callbacks: StreamCallbacks,
+  programmingLanguage?: string,
 ): Promise<void> {
   try {
     await consumeSSE(
@@ -120,6 +121,7 @@ export async function streamChat(
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         currentCode,
         language: getLocale(),
+        programmingLanguage,
       },
       callbacks,
     )
@@ -145,11 +147,12 @@ export async function explainStep(
   onFunctionCall: (call: FunctionCallArgs) => void,
   onComplete: () => void,
   onError: (error: Error) => void,
+  programmingLanguage?: string,
 ) {
   try {
     await consumeSSE(
       '/v1/ai/explain-step',
-      { step, code, exerciseDescription, language: getLocale() },
+      { step, code, exerciseDescription, language: getLocale(), programmingLanguage },
       { onTextChunk, onFunctionCall, onComplete, onError },
     )
   } catch (error) {
@@ -165,11 +168,12 @@ export async function getLLMHelp(
   onFunctionCall: (call: FunctionCallArgs) => void,
   onComplete: () => void,
   onError: (error: Error) => void,
+  programmingLanguage?: string,
 ) {
   try {
     await consumeSSE(
       '/v1/ai/get-help',
-      { code, exerciseDescription, tasksOutline, language: getLocale() },
+      { code, exerciseDescription, tasksOutline, language: getLocale(), programmingLanguage },
       { onTextChunk, onFunctionCall, onComplete, onError },
     )
   } catch (error) {
@@ -177,7 +181,11 @@ export async function getLLMHelp(
   }
 }
 
-export async function generateTasks(code: string, description: string): Promise<Step[]> {
+export async function generateTasks(
+  code: string,
+  description: string,
+  programmingLanguage?: string,
+): Promise<Step[]> {
   const token = await getAuthToken()
   if (!token) throw new Error('Not authenticated')
 
@@ -187,7 +195,7 @@ export async function generateTasks(code: string, description: string): Promise<
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ code, description }),
+    body: JSON.stringify({ code, description, programmingLanguage }),
   })
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText)
@@ -197,7 +205,10 @@ export async function generateTasks(code: string, description: string): Promise<
   return data.tasks as Step[]
 }
 
-export async function generateDescription(code: string): Promise<string> {
+export async function generateDescription(
+  code: string,
+  programmingLanguage?: string,
+): Promise<string> {
   const token = await getAuthToken()
   if (!token) throw new Error('Not authenticated')
 
@@ -207,7 +218,7 @@ export async function generateDescription(code: string): Promise<string> {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, programmingLanguage }),
   })
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText)

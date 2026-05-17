@@ -111,6 +111,7 @@ async function handleGetHelp() {
           msg.content = t(L.chat.errorAnalyzing)
         exerciseStore.isStreaming = false
       },
+      exerciseStore.language,
     )
   } catch (error) {
     console.error('Error getting help:', error)
@@ -172,7 +173,7 @@ async function handleSend() {
         if (msg) msg.content = t(L.chat.errorGeneral)
         exerciseStore.isStreaming = false
       },
-    })
+    }, exerciseStore.language)
   } catch (error) {
     console.error('Error sending message:', error)
     exerciseStore.isStreaming = false

@@ -49,6 +49,7 @@ export const useExerciseStore = defineStore('exercise', () => {
   const submittedAt = ref<number | null>(null)
   const isFinished = ref(false)
   const entryCreationTime = ref<number | null>(null)
+  const language = ref<string>('javascript')
 
   // Keep welcome message in sync with locale while chat is still at initial state
   watch(welcomeText, (text) => {
@@ -74,6 +75,7 @@ export const useExerciseStore = defineStore('exercise', () => {
     isFinished.value = false
     entryCreationTime.value = null
     steps.value = []
+    language.value = 'javascript'
   }
 
   return {
@@ -91,6 +93,7 @@ export const useExerciseStore = defineStore('exercise', () => {
     submittedAt,
     entryCreationTime,
     isFinished,
+    language,
     resetForExerciseSwitch,
   }
 })

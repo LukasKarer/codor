@@ -240,6 +240,7 @@ const loadExercise = async (overrideId?: string) => {
     exerciseStore.exerciseDescription = parsedContent.description
     exerciseStore.steps = parsedContent.steps ?? []
     exerciseTitle.value = parsedContent.title
+    exerciseStore.language = parsedContent.language || 'javascript'
     exerciseStore.code = ''
 
     // Hydrate exam settings before enrolling so the timer starts correctly

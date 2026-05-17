@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch, onUnmounted } from 'vue'
+import { ref, shallowRef, watch, onUnmounted, computed } from 'vue'
 import { useMonacoTheme } from '@/composables/useMonacoTheme'
 import { Play, Copy, Check } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -9,6 +9,8 @@ import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { useExerciseStore } from '@/stores/exercise'
 import type { editor as MonacoEditorType } from 'monaco-editor'
+import { getRuntime } from '@/languages/registry'
+import { LANGUAGE_META } from '@/languages/types'
 
 type LogEntry = {
   type: 'log' | 'error' | 'warn' | 'info' | 'system'
@@ -28,44 +30,47 @@ const workerRef = ref<Worker | null>(null)
 const editorRef = shallowRef<MonacoEditorType.IStandaloneCodeEditor | null>(null)
 const decorationsCollection = shallowRef<MonacoEditorType.IEditorDecorationsCollection | null>(null)
 
+const currentLanguage = computed(() => exerciseStore.language)
+const fileLabel = computed(() => {
+  const meta = LANGUAGE_META[currentLanguage.value as keyof typeof LANGUAGE_META]
+  return meta ? `lesson-01.${meta.extension}` : 'lesson-01.js'
+})
+
 function handleCopy() {
   navigator.clipboard.writeText(exerciseStore.code)
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
 }
 
-function handleRun() {
+async function handleRun() {
   logs.value = []
   if (workerRef.value) {
     workerRef.value.terminate()
   }
 
-  const worker = new Worker(new URL('../workers/codeExecutor.ts', import.meta.url), {
-    type: 'module',
-  })
-  workerRef.value = worker
+  const runtime = getRuntime(currentLanguage.value as any)
+  if (!runtime.isReady) {
+    logs.value.push({ type: 'info', content: `Loading ${runtime.name} runtime...` })
+  }
 
-  worker.onmessage = (e) => {
-    const { type, level, args, message, line } = e.data
-    if (type === 'console') {
-      logs.value.push({ type: level, content: args.join(' ') })
-    } else if (type === 'error') {
-      logs.value.push({ type: 'error', content: `Error: ${message}` })
-    } else if (type === 'editor' && e.data.action === 'highlightError') {
-      logs.value.push({ type: 'error', content: `[Editor Highlight] Line ${line}: ${message}` })
-    } else if (type === 'ai') {
-      logs.value.push({
-        type: 'info',
-        content: `[AI Call] ${e.data.functionName}(${e.data.args.join(', ')})`,
+  try {
+    const result = await runtime.run(exerciseStore.code)
+    if (result.stdout) {
+      result.stdout.split('\n').forEach((line) => {
+        if (line) logs.value.push({ type: 'log', content: line })
       })
     }
+    if (result.stderr) {
+      result.stderr.split('\n').forEach((line) => {
+        if (line) logs.value.push({ type: 'error', content: line })
+      })
+    }
+    if (result.exitCode !== 0 && !result.stderr) {
+      logs.value.push({ type: 'error', content: `Exited with code ${result.exitCode}` })
+    }
+  } catch (e: any) {
+    logs.value.push({ type: 'error', content: `Run error: ${e.message}` })
   }
-
-  worker.onerror = (err) => {
-    logs.value.push({ type: 'error', content: `Worker Error: ${err.message}` })
-  }
-
-  worker.postMessage(exerciseStore.code)
 }
 
 function applyHighlight() {
@@ -124,7 +129,7 @@ onUnmounted(() => {
     <!-- Editor Header -->
     <div class="flex items-center justify-between border-b border-border px-4 py-2">
       <div class="flex items-center gap-2">
-        <span class="ml-4 font-mono text-sm text-muted-foreground">lesson-01.js</span>
+        <span class="ml-4 font-mono text-sm text-muted-foreground">{{ fileLabel }}</span>
       </div>
       <div class="flex items-center gap-2">
         <Button
@@ -155,7 +160,7 @@ onUnmounted(() => {
         <div class="h-full w-full overflow-hidden">
           <VueMonacoEditor
             height="100%"
-            language="javascript"
+            :language="currentLanguage"
             :theme="monacoTheme"
             :value="exerciseStore.code"
             :options="{
