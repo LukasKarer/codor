@@ -20,6 +20,7 @@ print(result)`,
 
     const { loadPyodide } = await import(
       /* @vite-ignore */
+      // @ts-expect-error URL import — resolved at runtime
       'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.mjs'
     )
 
