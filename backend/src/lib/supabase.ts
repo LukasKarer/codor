@@ -1,3 +1,4 @@
+import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
@@ -8,4 +9,8 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment variables');
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  realtime: {
+    transport: WebSocket as any,
+  },
+});
