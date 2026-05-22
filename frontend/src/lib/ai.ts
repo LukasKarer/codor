@@ -1,3 +1,5 @@
+import { getAuthToken } from './supabase'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 export interface Message {
@@ -30,12 +32,6 @@ export interface StreamCallbacks {
   onFunctionCall?: (functionCall: FunctionCallArgs) => void
   onComplete?: () => void
   onError?: (error: Error) => void
-}
-
-async function getAuthToken(): Promise<string | null> {
-  const { supabase } = await import('./supabase')
-  const { data } = await supabase.auth.getSession()
-  return data.session?.access_token ?? null
 }
 
 // ─── SSE streaming helper ──────────────────────────────────────────────────

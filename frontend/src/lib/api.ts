@@ -1,3 +1,5 @@
+import { getAuthToken } from './supabase'
+
 // Backend API integration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
@@ -158,13 +160,6 @@ export interface PublicOrganisation {
 // ============================================
 // INTERNAL HELPERS
 // ============================================
-
-/** Retrieve the current Supabase session token. Imported lazily to avoid circular deps. */
-async function getAuthToken(): Promise<string | null> {
-  const { supabase } = await import('./supabase')
-  const { data } = await supabase.auth.getSession()
-  return data.session?.access_token ?? null
-}
 
 async function apiCall<T>(
   endpoint: string,
