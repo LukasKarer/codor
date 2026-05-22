@@ -191,7 +191,7 @@ export async function generateTasks(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ code, description, programmingLanguage }),
+    body: JSON.stringify({ code, description, language: getLocale(), programmingLanguage }),
   })
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText)
@@ -214,7 +214,7 @@ export async function generateDescription(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ code, programmingLanguage }),
+    body: JSON.stringify({ code, language: getLocale(), programmingLanguage }),
   })
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText)
