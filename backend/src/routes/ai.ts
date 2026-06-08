@@ -321,9 +321,10 @@ Provide your guidance now:`;
  * Response: { tasks: Step[] }
  */
 router.post('/ai/generate-tasks', async (req: Request, res: Response) => {
-  const { code, description, programmingLanguage } = req.body as {
+  const { code, description, language, programmingLanguage } = req.body as {
     code: string;
     description: string;
+    language?: string;
     programmingLanguage?: string;
   };
 
@@ -338,6 +339,7 @@ For each task:
 2. Identify the specific lines of code (start and end) that correspond to this task.
 3. Ensure the tasks are in logical order.
 4. Use the \`generate_tasks\` tool to return the result.
+${languageInstruction(language)}
 
 Code:
 \`\`\`${lang}
@@ -372,8 +374,9 @@ ${description}
  * Response: { description: string }
  */
 router.post('/ai/generate-description', async (req: Request, res: Response) => {
-  const { code, programmingLanguage } = req.body as {
+  const { code, language, programmingLanguage } = req.body as {
     code: string;
+    language?: string;
     programmingLanguage?: string;
   };
 
@@ -383,6 +386,7 @@ router.post('/ai/generate-description', async (req: Request, res: Response) => {
     const prompt = `You are an expert programming tutor.
 Your goal is to generate a comprehensive and educational description for the provided ${lang} code.
 The description should explain what the code does. Do NOT include implementation details or step-by-step instructions.
+${languageInstruction(language)}
 
 Code:
 \`\`\`${lang}
