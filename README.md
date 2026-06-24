@@ -50,7 +50,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Important: the compose file now fails fast if `API_DOMAIN` or `FRONTEND_DOMAIN` is missing, so unresolved placeholders like `${API_DOMAIN}` are not silently passed to Caddy labels.
+Important: set `API_DOMAIN` and `FRONTEND_DOMAIN` before deploying — the compose labels reference them directly. Note that Coolify's variable parser does not support shell modifiers like `${VAR:?msg}` or `${VAR:-default}`, so plain `${VAR}` references are used.
 
 ### 1. Clone the repository
 
